@@ -213,7 +213,7 @@ public class JSONParser {
     // because the illegal char could have been the last in the buffer
     // or in the stream.  To deal with this, the "eof" var was introduced
     if (!eof && start>0) start--;  // backup one char
-    String chs = "char=" + ((start>=end) ? "(EOF)" : "" + (char)buf[start]);
+    String chs = "char=" + ((start>=end) ? "(EOF)" : "" + buf[start]);
     String pos = "position=" + (gpos+start);
     String tot = chs + ',' + pos + getContext();
     if (msg==null) {
@@ -626,7 +626,8 @@ public class JSONParser {
     }
   }
 
-  public String toString() {
+  @Override
+	public String toString() {
     return "start="+start+",end="+end+",state="+state+"valstate="+valstate;
   }
 
@@ -730,7 +731,7 @@ public class JSONParser {
   private void goTo(int what) throws IOException {
     if (valstate==what) { valstate=0; return; }
     if (valstate==0) {
-      int ev = nextEvent();      // TODO
+      /*int ev = */nextEvent();      // TODO
       if (valstate!=what) {
         throw err("type mismatch");
       }

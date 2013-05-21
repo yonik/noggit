@@ -43,14 +43,14 @@ public class TestObjectBuilder extends TestCase {
     assertEquals(s1, s3);
   }
 
-  public static List L(Object... lst) {
+  public static List<Object> L(Object... lst) {
      return Arrays.asList(lst);
   }
   public static Object[] A(Object... lst) {
      return lst;
   }
-  public static Map O(Object... lst) {
-    LinkedHashMap map = new LinkedHashMap();
+  public static Map<String, Object> O(Object... lst) {
+    LinkedHashMap<String,Object> map = new LinkedHashMap<String,Object>();
     for (int i=0; i<lst.length; i+=2) {
       map.put(lst[i].toString(), lst[i+1]);
     }
