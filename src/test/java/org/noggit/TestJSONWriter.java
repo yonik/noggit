@@ -36,14 +36,14 @@ public class TestJSONWriter extends TestCase {
     assertEquals(s1, expected);
   }
 
-  public static List L(Object... lst) {
+  public static List<Object> L(Object... lst) {
      return Arrays.asList(lst);
   }
   public static Object[] A(Object... lst) {
      return lst;
   }
-  public static Map O(Object... lst) {
-    LinkedHashMap map = new LinkedHashMap();
+  public static Map<String,Object> O(Object... lst) {
+    LinkedHashMap<String,Object> map = new LinkedHashMap<String,Object>();
     for (int i=0; i<lst.length; i+=2) {
       map.put(lst[i].toString(), lst[i+1]);
     }
@@ -62,8 +62,9 @@ public class TestJSONWriter extends TestCase {
   }
 
   public static class Custom implements JSONWriter.Writable {
-      public void write(JSONWriter writer) {
-          Map val = new LinkedHashMap();
+      @Override
+			public void write(JSONWriter writer) {
+          Map<String,Integer> val = new LinkedHashMap<String,Integer>();
           val.put("a",1);
           val.put("b",2);
           writer.write(val);

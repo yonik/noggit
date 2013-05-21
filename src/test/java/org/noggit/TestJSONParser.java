@@ -17,11 +17,11 @@
 
 package org.noggit;
 
-import junit.framework.TestCase;
-
-import java.util.Random;
-import java.io.StringReader;
 import java.io.IOException;
+import java.io.StringReader;
+import java.util.Random;
+
+import junit.framework.TestCase;
 
 /**
  * @author yonik
@@ -105,7 +105,7 @@ public class TestJSONParser extends TestCase {
       int ev = p.nextEvent();
       int expect = events[expected.charAt(i)];
       if (ev != expect) {
-        TestCase.fail("Expected " + expect + ", got " + ev
+        fail("Expected " + expect + ", got " + ev
                 + "\n\tINPUT=" + input
                 + "\n\tEXPECTED=" + expected
                 + "\n\tAT=" + i + " ("+ expected.charAt(i) + ")");
@@ -206,14 +206,21 @@ public class TestJSONParser extends TestCase {
     public Num(String digits) {
       this.digits = digits;
     }
-    public String toString() { return new String("NUMBERSTRING("+digits+")"); }
-    public boolean equals(Object o) {
-      return (getClass()==o.getClass() && digits.equals(((Num)o).digits));
+    @Override
+		public String toString() { return new String("NUMBERSTRING("+digits+")"); }
+    @Override
+		public boolean equals(Object o) {
+			return (getClass() == o.getClass() && digits.equals(((Num) o).digits));
     }
+		@Override
+		public int hashCode() {
+			return digits.hashCode();
+		}
   }
 
   public static class BigNum extends Num {
-    public String toString() { return new String("BIGNUM("+digits+")"); }    
+    @Override
+		public String toString() { return new String("BIGNUM("+digits+")"); }    
     public BigNum(String digits) { super(digits); }
   }
 
@@ -226,12 +233,18 @@ public class TestJSONParser extends TestCase {
   public static Num bn(String digits) { return new BigNum(digits); }
   public static Object t = new Boolean(true);
   public static Object f = new Boolean(false);
-  public static Object a = new Object(){public String toString() {return "ARRAY_START";}};
-  public static Object A = new Object(){public String toString() {return "ARRAY_END";}};
-  public static Object m = new Object(){public String toString() {return "OBJECT_START";}};
-  public static Object M = new Object(){public String toString() {return "OBJECT_END";}};
-  public static Object N = new Object(){public String toString() {return "NULL";}};
-  public static Object e = new Object(){public String toString() {return "EOF";}};
+  public static Object a = new Object(){@Override
+	public String toString() {return "ARRAY_START";}};
+  public static Object A = new Object(){@Override
+	public String toString() {return "ARRAY_END";}};
+  public static Object m = new Object(){@Override
+	public String toString() {return "OBJECT_START";}};
+  public static Object M = new Object(){@Override
+	public String toString() {return "OBJECT_END";}};
+  public static Object N = new Object(){@Override
+	public String toString() {return "NULL";}};
+  public static Object e = new Object(){@Override
+	public String toString() {return "EOF";}};
 
   // match parser states with the expected states
   public static void parse(JSONParser p, String input, Object[] expected) throws IOException {
@@ -262,10 +275,7 @@ public class TestJSONParser extends TestCase {
       }
 
       if (!(exp==got || exp.equals(got))) {
-        TestCase.fail("Fail: String='"+input+"'"
-                + "\n\tINPUT=" + got
-                + "\n\tEXPECTED=" + exp
-                + "\n\tAT RULE " + i);
+				fail("Fail: String='" + input + "'" + "\n\tINPUT=" + got + "\n\tEXPECTED=" + exp + "\n\tAT RULE " + i);
       }
     }
   }
@@ -275,7 +285,7 @@ public class TestJSONParser extends TestCase {
     input = input.replace('\'','"');
     for (int i=0; i<Integer.MAX_VALUE; i++) {
       JSONParser p = getParser(input,i,-1);
-      if (p==null) break;
+			if (p == null) break;
       parse(p,input,expected);
     }
   }
@@ -286,11 +296,11 @@ public class TestJSONParser extends TestCase {
   public static void err(String input) throws IOException {
     try {
       JSONParser p = getParser(input);
-      while (p.nextEvent() != JSONParser.EOF);
+      while (p.nextEvent() != JSONParser.EOF) {}
     } catch (Exception e) {
       return;
     }
-    TestCase.fail("Input should failed:'" + input + "'");    
+    fail("Input should failed:'" + input + "'");    
   }
 
   public void testNull() throws IOException {
@@ -497,8 +507,8 @@ public class TestJSONParser extends TestCase {
     err("[{]");
     err("{{}");
     err("[{{}]");
-    err("{}}");;
-    err("[{}}]");;
+    err("{}}");
+    err("[{}}]");
     err("{1}");
     err("[{1}]");
     err("{'a'}");

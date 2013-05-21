@@ -100,15 +100,16 @@ public class ObjectBuilder {
   }
 
   public Object newObject() throws IOException {
-    return new LinkedHashMap();
+    return new LinkedHashMap<Object,Object>();
   }
 
   public Object getKey() throws IOException {
     return parser.getString();
   }
 
-  public void addKeyVal(Object map, Object key, Object val) throws IOException {
-    Object prev = ((Map)map).put(key,val);
+  @SuppressWarnings("unchecked")
+	public void addKeyVal(Object map, Object key, Object val) throws IOException {
+		/* Object prev = */((Map<Object, Object>) map).put(key, val);
     // TODO: test for repeated value?
   }
 
@@ -130,11 +131,12 @@ public class ObjectBuilder {
   }
 
   public Object newArray() {
-    return new ArrayList();
+    return new ArrayList<Object>();
   }
 
-  public void addArrayVal(Object arr, Object val) throws IOException {
-    ((List)arr).add(val);
+  @SuppressWarnings("unchecked")
+	public void addArrayVal(Object arr, Object val) throws IOException {
+    ((List<Object>)arr).add(val);
   }
 
   public Object endArray(Object arr) {

@@ -80,9 +80,9 @@ public class JSONWriter {
         writeNumber(arr);
       }
     } else if (o instanceof Map) {
-      write((Map)o);
+      write((Map<?,?>)o);
     } else if (o instanceof Collection) {
-      write((Collection)o);
+      write((Collection<?>)o);
     } else if (o instanceof Object[]) {
       write(Arrays.asList((Object[])o));
     } else if (o instanceof Boolean) {
@@ -116,11 +116,11 @@ public class JSONWriter {
     writeString(out.toString());
   }
 
-  public void write(Map val) {
+  public void write(Map<?,?> val) {
     startObject();
     int sz = val.size();
     boolean first = true;
-    for (Map.Entry entry : (Set<Map.Entry>)val.entrySet()) {
+    for (Map.Entry<?,?> entry : val.entrySet()) {
       if (first) {
         first = false;
       } else {
@@ -134,7 +134,7 @@ public class JSONWriter {
     endObject();
   }
 
-  public void write(Collection val) {
+  public void write(Collection<?> val) {
     startArray();
     int sz = val.size();
     boolean first = true;
