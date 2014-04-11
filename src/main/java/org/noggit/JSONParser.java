@@ -192,10 +192,95 @@ public class JSONParser {
     return buf[start++];
   }
 
-  private int getCharNWS() throws IOException {
+  private int getCharNWSY() throws IOException {
     for (;;) {
       int ch = getChar();
       if (!(ch==' ' || ch=='\t' || ch=='\n' || ch=='\r')) return ch;
+    }
+  }
+
+  protected int getCharNWS() throws IOException {
+    outer: for (;;) {
+      int ch = getChar();
+      switch (ch) {
+        case ' ' :
+        case '\t' :
+        case '\r' :
+        case '\n' :
+          continue outer;
+        case '#' :
+          getNewlineComment();
+          continue outer;
+        case '/' :
+          getSlashComment();
+          continue outer;
+        default:
+          return ch;
+      }
+    }
+  }
+
+  protected int getCharNWS(int ch) throws IOException {
+    for (;;) {
+      switch (ch) {
+        case ' ' :
+        case '\t' :
+        case '\r' :
+        case '\n' :
+          break;
+        case '#' :
+          getNewlineComment();
+          break;
+        case '/' :
+          getSlashComment();
+          break;
+        default:
+          return ch;
+      }
+
+      ch = getChar();
+    }
+  }
+
+
+  protected void getNewlineComment() throws IOException {
+    // read a # or a //, so go until newline
+    for (;;) {
+      int ch = getChar();
+      // don't worry about DOS /r/n... we'll stop on the \r and let the rest of the whitespace
+      // eater consume the \n
+      if (ch == '\n' || ch == '\r' || ch == -1) {
+        return;
+      }
+    }
+  }
+
+  protected void getSlashComment() throws IOException {
+    int ch = getChar();
+    if (ch == '/') {
+      getNewlineComment();
+      return;
+    }
+
+    if (ch != '*') {
+      err("Invalid comment: expected //, /*, or #");
+    }
+
+    ch = getChar();
+    for (;;) {
+      if (ch == '*') {
+        ch = getChar();
+        if (ch == '/') {
+          return;
+        } else if (ch == '*') {
+          // handle cases of *******/
+          continue;
+        }
+      }
+      if (ch == -1) {
+        return;
+      }
+      ch = getChar();
     }
   }
 
@@ -208,7 +293,7 @@ public class JSONParser {
     }
   }
 
-  private ParseException err(String msg) {
+  protected ParseException err(String msg) {
     // We can't tell if EOF was hit by comparing start<=end
     // because the illegal char could have been the last in the buffer
     // or in the stream.  To deal with this, the "eof" var was introduced
@@ -547,12 +632,17 @@ public class JSONParser {
   // return the next event when parser is in a neutral state (no
   // map separators or array element separators to read
   private int next(int ch) throws IOException {
-    for(;;) {
+    outer: for(;;) {
       switch (ch) {
         case ' ':
-        case '\t': break;
+        case '\t':
         case '\r':
-        case '\n': break;  // try and keep track of linecounts?
+        case '\n':
+        case '/':
+        case '#':
+          ch = getCharNWS(ch);
+          // try and keep track of linecounts?
+          continue outer;
         case '"' :
           valstate = STRING;
           return STRING;
@@ -622,7 +712,8 @@ public class JSONParser {
         default: throw err(null);
       }
 
-      ch = getChar();
+      // this is now unreachable since whitespace processing does a "continue"
+      // ch = getChar();
     }
   }
 

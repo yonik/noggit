@@ -539,7 +539,14 @@ public class TestJSONParser extends TestCase {
     // no nextEvent for the next objects...
     assertEquals(1,p.getLong());
     assertEquals(2,p.getLong());
-    
+  }
+
+
+  public void testComments() throws IOException {
+    parse("#pre comment\n{//before a\n  'a' /* after a **/ #before separator\n  : /* after separator */ {/*before b*/'b'#after b\n://before c\n'c'/*after c*/}/*after close*/}#post comment no EOL", new Object[]{m,"a",m,"b","c",M,M,e});
+
+
+
 
   }
 
