@@ -59,10 +59,11 @@ public class JSONParser {
 
 
   /** Flags to control parsing behavior */
-  public static int ALLOW_COMMENTS                         = 1 << 0;
-  public static int ALLOW_SINGLE_QUOTES                    = 1 << 1;
-  public static int ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER = 1 << 2;
-  public static int FLAGS_STRICT = 0;
+  public static final int ALLOW_COMMENTS                         = 1 << 0;
+  public static final int ALLOW_SINGLE_QUOTES                    = 1 << 1;
+  public static final int ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER = 1 << 2;
+  public static final int ALLOW_UNQUOTED_FIELD_NAMES             = 1 << 3;
+  public static final int FLAGS_STRICT = 0;
 
   public static class ParseException extends RuntimeException {
     public ParseException(String msg) {
@@ -91,7 +92,7 @@ public class JSONParser {
 
   private static final CharArr devNull = new NullCharArr();
 
-  int flags = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER;
+  int flags = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER | ALLOW_UNQUOTED_FIELD_NAMES;
 
   final char[] buf;  // input buffer with JSON text in it
   int start;         // current position in the buffer
@@ -102,7 +103,7 @@ public class JSONParser {
 
   int event;         // last event read
 
-  int stringChar;    // The terminator for the last string we read: single quote, double quote, or 0 for unterminated.
+  int stringTerm;    // The terminator for the last string we read: single quote, double quote, or 0 for unterminated.
 
   public JSONParser(Reader in) {
     this(in, new char[8192]);
@@ -576,9 +577,15 @@ public class JSONParser {
   private final CharArr tmp = new CharArr(null,0,0);
 
   private CharArr readStringChars() throws IOException {
-     char terminator = (char)stringChar;
-     int i;
-     for (i=start; i<end; i++) {
+    if (stringTerm == 0) {
+      // "out" will already contain the first part of the bare string, so don't reset it
+      readStringBare(out, start);
+      return out;
+    }
+
+    char terminator = (char) stringTerm;
+    int i;
+    for (i=start; i<end; i++) {
       char c = buf[i];
       if (c == terminator) {
         tmp.set(buf,start,i);  // directly use input buffer
@@ -598,7 +605,12 @@ public class JSONParser {
   // character ('"' or "/").  start<=middle<end
   // this should be faster for strings with fewer escapes, but probably slower for many escapes.
   private void readStringChars2(CharArr arr, int middle) throws IOException {
-    char terminator = (char)stringChar;
+    if (stringTerm == 0) {
+      readStringBare(arr, start);
+      return;
+    }
+
+    char terminator = (char) stringTerm;
 
     for (;;) {
       if (middle>=end) {
@@ -623,6 +635,57 @@ public class JSONParser {
     }
   }
 
+  private void readStringBare(CharArr arr, int middle) throws IOException {
+    if (arr != out) {
+      arr.append(out);
+    }
+    for (;;) {
+      if (middle>=end) {
+        arr.write(buf,start,middle-start);
+        start=middle;
+        getMore();
+        middle=start;
+      }
+      int ch = buf[middle++];
+      if (Character.isJavaIdentifierPart(ch)) {
+        continue;
+      } else if (ch=='\\') {   // support escapes in bare strings?
+        int len = middle-start-1;
+        if (len>0) arr.write(buf,start,len);
+        start=middle;
+        arr.write(readEscapedChar());
+        middle=start;
+      } else {
+        // an unknown character terminates the string
+        int len = middle-start-1;
+        if (len>0) arr.write(buf,start,len);
+        start=middle;
+        start--;  // back up so that something like ':' will be reread
+        return;
+      }
+    }
+  }
+
+  private void handleNonDoubleQuoteKey(int ch) throws IOException {
+    if (ch == '\'') {
+      stringTerm = ch;
+      if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
+        throw err("Single quoted strings not allowed");
+      }
+    } else {
+      if ((flags & ALLOW_UNQUOTED_FIELD_NAMES) == 0 || ch==EOF) {
+        throw err("Expected double quoted string");
+      }
+
+      if (!Character.isJavaIdentifierStart(ch)) {
+        throw err("Expected string");
+      }
+
+      stringTerm = 0;  // signal for unquoted string
+      out.reset();
+      out.unsafeWrite(ch);
+    }
+  }
 
   /*** alternate implelentation
   // middle is the pointer to the middle of a buffer to start scanning for a non-string
@@ -671,14 +734,14 @@ public class JSONParser {
           // try and keep track of linecounts?
           continue outer;
         case '"' :
-          stringChar = '"';
+          stringTerm = '"';
           valstate = STRING;
           return STRING;
         case '\'' :
           if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
             throw err("Single quoted strings not allowed");
           }
-          stringChar = '\'';
+          stringTerm = '\'';
           valstate = STRING;
           return STRING;
         case '{' :
@@ -795,14 +858,9 @@ public class JSONParser {
           return event = OBJECT_END;
         }
         if (ch == '"') {
-          stringChar = ch;
-        } else if (ch == '\'') {
-          stringChar = ch;
-          if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
-            throw err("Single quoted strings not allowed");
-          }
+          stringTerm = ch;
         } else {
-          throw err("Expected string");
+          handleNonDoubleQuoteKey(ch);
         }
         state = DID_MEMNAME;
         valstate = STRING;
@@ -824,14 +882,9 @@ public class JSONParser {
         }
         ch = getCharNWS();
         if (ch == '"') {
-          stringChar = ch;
-        } else if (ch == '\'') {
-          stringChar = ch;
-          if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
-            throw err("Single quoted strings not allowed");
-          }
+          stringTerm = ch;
         } else {
-          throw err("Expected string");
+          handleNonDoubleQuoteKey(ch);
         }
         state = DID_MEMNAME;
         valstate = STRING;

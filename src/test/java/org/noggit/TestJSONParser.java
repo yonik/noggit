@@ -124,18 +124,14 @@ public class TestJSONParser extends TestCase {
   }
 
   public static void parse(String input, String expected) throws IOException {
-    String in;
+    String in = input;
+    if ((flags & JSONParser.ALLOW_SINGLE_QUOTES)==0 || r.nextBoolean()) {
+      in = in.replace('\'', '"');
+    }
 
     for (int i=0; i<Integer.MAX_VALUE; i++) {
-      JSONParser p = getParser(input,i,-1);
+      JSONParser p = getParser(in,i,-1);
       if (p==null) break;
-
-      if ((p.getFlags() & JSONParser.ALLOW_SINGLE_QUOTES)==0 || r.nextBoolean()) {
-        in = input.replace('\'', '"');
-      } else {
-        in = input;
-      }
-
       parse(p,in,expected);
     }
 
@@ -186,6 +182,8 @@ public class TestJSONParser extends TestCase {
 
 
       JSONParser parser = getParser(new String(arr));
+      parser.setFlags( r.nextInt() );  // set random parser flags
+
       int ret = 0;
       try {
         for (;;) {
@@ -300,21 +298,20 @@ public class TestJSONParser extends TestCase {
 
 
   public static void parse(String input, Object[] expected) throws IOException {
-    String in;
+    parse(input, (flags & JSONParser.ALLOW_SINGLE_QUOTES)==0 || r.nextBoolean(), expected);
+  }
+
+  public static void parse(String input, boolean changeSingleQuote, Object[] expected) throws IOException {
+    String in = input;
+    if (changeSingleQuote) {
+      in = in.replace('\'', '"');
+    }
     for (int i=0; i<Integer.MAX_VALUE; i++) {
-      JSONParser p = getParser(input,i,-1);
+      JSONParser p = getParser(in,i,-1);
       if (p == null) break;
-
-      if ((p.getFlags() & JSONParser.ALLOW_SINGLE_QUOTES)==0 || r.nextBoolean()) {
-        in = input.replace('\'', '"');
-      } else {
-        in = input;
-      }
-
       parse(p,in,expected);
     }
   }
-
 
 
 
@@ -374,7 +371,9 @@ public class TestJSONParser extends TestCase {
     parse("['X\\\\']",new Object[]{a,"X\\",A,e});
     parse("['\\\\X']",new Object[]{a,"\\X",A,e});
     parse("[\"\\\"\"]",new Object[]{a,"\"",A,e});
-    parse("['\\'']",new Object[]{a,"'",A,e});
+
+    parse("['\\'']", true, new Object[]{a,"\"",A,e});
+    parse("['\\'']", false, new Object[]{a,"'",A,e});
 
 
     String esc="\\n\\r\\tX\\b\\f\\/\\\\X\\\"";
@@ -547,11 +546,15 @@ public class TestJSONParser extends TestCase {
     err("[{1}]");
     err("{'a'}");
     err("{'a','b'}");
-    err("{null:'b'}");
     err("{[]:'b'}");
+    err("{{'a':'b'}:'c'}");
+
+    // bare strings allow these to pass
+    flags=JSONParser.FLAGS_STRICT;
+    err("{null:'b'}");
     err("{true:'b'}");
     err("{false:'b'}");
-    err("{{'a':'b'}:'c'}");
+    flags=-1;
 
     parse("{"+"}", new Object[]{m,M,e});
     parse("{'a':'b'}", new Object[]{m,"a","b",M,e});
@@ -561,8 +564,17 @@ public class TestJSONParser extends TestCase {
     parse("{'a':{'b':'c'}}", new Object[]{m,"a",m,"b","c",M,M,e});
 
     String big = "Now is the time for all good men to come to the aid of their country!";
-    String t = big+big+big+big+big;
-    parse("{'"+t+"':'"+t+"','a':'b'}", new Object[]{m,t,t,"a","b",M,e});
+    String bigger = big+big+big+big+big;
+    parse("{'"+bigger+"':'"+bigger+"','a':'b'}", new Object[]{m,bigger,bigger,"a","b",M,e});
+
+
+    flags=JSONParser.ALLOW_UNQUOTED_FIELD_NAMES;
+    parse("{a:'b'}", new Object[]{m,"a","b",M,e});
+    parse("{null:'b'}", new Object[]{m,"null","b",M,e});
+    parse("{true: 'b'}", new Object[]{m,"true","b",M,e});
+    parse("{ false :'b'}", new Object[]{m,"false","b",M,e});
+    parse("{null:null, true : true , false : false , x:'y',a:'b'}", new Object[]{m,"null",N,"true",t,"false",f,"x","y","a","b",M,e});
+    flags=-1;
   }
 
 
