@@ -283,7 +283,7 @@ public class JSONParser {
     }
 
     if (ch != '*') {
-      err("Invalid comment: expected //, /*, or #");
+      throw err("Invalid comment: expected //, /*, or #");
     }
 
     ch = getChar();
@@ -676,7 +676,7 @@ public class JSONParser {
           return STRING;
         case '\'' :
           if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
-            err("Single quoted strings not allowed");
+            throw err("Single quoted strings not allowed");
           }
           stringChar = '\'';
           valstate = STRING;
@@ -799,7 +799,7 @@ public class JSONParser {
         } else if (ch == '\'') {
           stringChar = ch;
           if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
-            err("Single quoted strings not allowed");
+            throw err("Single quoted strings not allowed");
           }
         } else {
           throw err("Expected string");
@@ -828,7 +828,7 @@ public class JSONParser {
         } else if (ch == '\'') {
           stringChar = ch;
           if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
-            err("Single quoted strings not allowed");
+            throw err("Single quoted strings not allowed");
           }
         } else {
           throw err("Expected string");

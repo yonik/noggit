@@ -110,7 +110,7 @@ public class JSONParserWS extends JSONParser {
     }
 
     if (ch != '*') {
-      err("Invalid comment: expected //, /*, or #");
+      throw err("Invalid comment: expected //, /*, or #");
     }
 
     ch = getChar();
