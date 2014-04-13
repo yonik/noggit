@@ -57,6 +57,13 @@ public class JSONParser {
   /** Event indicating the end of input has been reached */
   public static final int EOF=11;
 
+
+  /** Flags to control parsing behavior */
+  public static int ALLOW_COMMENTS                         = 1 << 0;
+  public static int ALLOW_SINGLE_QUOTES                    = 1 << 1;
+  public static int ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER = 1 << 2;
+  public static int FLAGS_STRICT = 0;
+
   public static class ParseException extends RuntimeException {
     public ParseException(String msg) {
       super(msg);
@@ -84,6 +91,7 @@ public class JSONParser {
 
   private static final CharArr devNull = new NullCharArr();
 
+  int flags = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER;
 
   final char[] buf;  // input buffer with JSON text in it
   int start;         // current position in the buffer
@@ -93,6 +101,8 @@ public class JSONParser {
   long gpos;          // global position = gpos + start
 
   int event;         // last event read
+
+  int stringChar;    // The terminator for the last string we read: single quote, double quote, or 0 for unterminated.
 
   public JSONParser(Reader in) {
     this(in, new char[8192]);
@@ -125,6 +135,16 @@ public class JSONParser {
     this.end = end;
     this.buf = new char[end-start];
     data.getChars(start,end,buf,0);
+  }
+
+  public int getFlags() {
+    return flags;
+  }
+
+  public int setFlags(int flags) {
+    int oldFlags = flags;
+    this.flags = flags;
+    return oldFlags;
   }
 
   // temporary output buffer
@@ -528,8 +548,10 @@ public class JSONParser {
 
   // backslash has already been read when this is called
   private char readEscapedChar() throws IOException {
-    switch (getChar()) {
+    int ch = getChar();
+    switch (ch) {
       case '"' : return '"';
+      case '\'' : return '\'';
       case '\\' : return '\\';
       case '/' : return '/';
       case 'n' : return '\n';
@@ -544,18 +566,21 @@ public class JSONParser {
              | (hexval(getChar()) << 4)
              | (hexval(getChar())));
     }
-    throw err("Invalid character escape in string");
+    if ( (flags & ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER) != 0 && ch != EOF) {
+      return (char)ch;
+    }
+    throw err("Invalid character escape");
   }
 
   // a dummy buffer we can use to point at other buffers
   private final CharArr tmp = new CharArr(null,0,0);
 
   private CharArr readStringChars() throws IOException {
-     char c=0;
+     char terminator = (char)stringChar;
      int i;
      for (i=start; i<end; i++) {
-      c = buf[i];
-      if (c=='"') {
+      char c = buf[i];
+      if (c == terminator) {
         tmp.set(buf,start,i);  // directly use input buffer
         start=i+1; // advance past last '"'
         return tmp;
@@ -573,6 +598,8 @@ public class JSONParser {
   // character ('"' or "/").  start<=middle<end
   // this should be faster for strings with fewer escapes, but probably slower for many escapes.
   private void readStringChars2(CharArr arr, int middle) throws IOException {
+    char terminator = (char)stringChar;
+
     for (;;) {
       if (middle>=end) {
         arr.write(buf,start,middle-start);
@@ -581,7 +608,7 @@ public class JSONParser {
         middle=start;
       }
       int ch = buf[middle++];
-      if (ch=='"') {
+      if (ch == terminator) {
         int len = middle-start-1;        
         if (len>0) arr.write(buf,start,len);
         start=middle;
@@ -644,6 +671,14 @@ public class JSONParser {
           // try and keep track of linecounts?
           continue outer;
         case '"' :
+          stringChar = '"';
+          valstate = STRING;
+          return STRING;
+        case '\'' :
+          if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
+            err("Single quoted strings not allowed");
+          }
+          stringChar = '\'';
           valstate = STRING;
           return STRING;
         case '{' :
@@ -759,7 +794,14 @@ public class JSONParser {
           pop();
           return event = OBJECT_END;
         }
-        if (ch != '"') {
+        if (ch == '"') {
+          stringChar = ch;
+        } else if (ch == '\'') {
+          stringChar = ch;
+          if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
+            err("Single quoted strings not allowed");
+          }
+        } else {
           throw err("Expected string");
         }
         state = DID_MEMNAME;
@@ -781,7 +823,14 @@ public class JSONParser {
           throw err("Expected ',' or '}'");
         }
         ch = getCharNWS();
-        if (ch != '"') {
+        if (ch == '"') {
+          stringChar = ch;
+        } else if (ch == '\'') {
+          stringChar = ch;
+          if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
+            err("Single quoted strings not allowed");
+          }
+        } else {
           throw err("Expected string");
         }
         state = DID_MEMNAME;

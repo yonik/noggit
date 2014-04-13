@@ -37,6 +37,8 @@ public class TestJSONParser extends TestCase {
   static String parserInput;
   static JSONParser lastParser;
 
+  static int flags = -1;  // the default
+
   public static String lastParser() {
     return "parserType=" + parserType
             + (parserType==1 ? " bufferSize=" + bufferSize : "")
@@ -66,7 +68,15 @@ public class TestJSONParser extends TestCase {
         parser = new JSONParser(new StringReader(s), new char[bufSize]);
         break;
     }
-    return lastParser = parser;
+    if (parser == null) return null;
+
+    lastParser = parser;
+
+    if (flags != -1) {
+      parser.setFlags(flags);
+    }
+
+    return parser;
   }
 
   /** for debugging purposes
@@ -108,17 +118,25 @@ public class TestJSONParser extends TestCase {
         fail("Expected " + expect + ", got " + ev
                 + "\n\tINPUT=" + input
                 + "\n\tEXPECTED=" + expected
-                + "\n\tAT=" + i + " ("+ expected.charAt(i) + ")");
+                + "\n\tAT=" + i + " (" + expected.charAt(i) + ")");
       }
     }
   }
 
   public static void parse(String input, String expected) throws IOException {
-    input = input.replace('\'','"');
+    String in;
+
     for (int i=0; i<Integer.MAX_VALUE; i++) {
       JSONParser p = getParser(input,i,-1);
       if (p==null) break;
-      parse(p,input,expected);
+
+      if ((p.getFlags() & JSONParser.ALLOW_SINGLE_QUOTES)==0 || r.nextBoolean()) {
+        in = input.replace('\'', '"');
+      } else {
+        in = input;
+      }
+
+      parse(p,in,expected);
     }
 
     testCorruption(input, 100000);
@@ -282,11 +300,18 @@ public class TestJSONParser extends TestCase {
 
 
   public static void parse(String input, Object[] expected) throws IOException {
-    input = input.replace('\'','"');
+    String in;
     for (int i=0; i<Integer.MAX_VALUE; i++) {
       JSONParser p = getParser(input,i,-1);
-			if (p == null) break;
-      parse(p,input,expected);
+      if (p == null) break;
+
+      if ((p.getFlags() & JSONParser.ALLOW_SINGLE_QUOTES)==0 || r.nextBoolean()) {
+        in = input.replace('\'', '"');
+      } else {
+        in = input;
+      }
+
+      parse(p,in,expected);
     }
   }
 
@@ -332,15 +357,24 @@ public class TestJSONParser extends TestCase {
     err("['\\u11']");
     err("['\\u1']");
     err("['\\']");
-    err("['\\ ']");
-    err("['\\U1111']");
+
+
+    flags = JSONParser.FLAGS_STRICT;
+    err("['\\ ']");  // escape of non-special char
+    err("['\\U1111']");  // escape of non-special char
+    flags = -1;
+
+    parse("['\\ ']", new Object[]{a, " ", A, e});  // escape of non-special char
+    parse("['\\U1111']", new Object[]{a, "U1111", A, e});  // escape of non-special char
+
 
 
     parse("['']",new Object[]{a,"",A,e});
     parse("['\\\\']",new Object[]{a,"\\",A,e});
     parse("['X\\\\']",new Object[]{a,"X\\",A,e});
     parse("['\\\\X']",new Object[]{a,"\\X",A,e});
-    parse("['\\'']",new Object[]{a,"\"",A,e});
+    parse("[\"\\\"\"]",new Object[]{a,"\"",A,e});
+    parse("['\\'']",new Object[]{a,"'",A,e});
 
 
     String esc="\\n\\r\\tX\\b\\f\\/\\\\X\\\"";
