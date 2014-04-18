@@ -9,6 +9,11 @@
   <url>http://github.com/yonik/noggit</url>
   <description>Noggit is the world's fastest streaming JSON parser for Java.</description>
   
+  <parent>
+    <groupId>org.sonatype.oss</groupId>
+    <artifactId>oss-parent</artifactId>
+    <version>7</version>
+  </parent>
 
   <licenses>
     <license>
@@ -19,9 +24,9 @@
   </licenses>
 
   <scm>
-    <url>https://github.com/yonik/noggit</url>
-    <connection>scm:git:git://github.com/yonik/noggit.git</connection>
+    <connection>scm:git:git@github.com:yonik/noggit.git</connection>
     <developerConnection>scm:git:git@github.com:yonik/noggit.git</developerConnection>
+    <url>git@github.com:yonik/noggit.git</url>
   </scm>
 
   <developers>
