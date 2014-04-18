@@ -6,7 +6,9 @@
   <packaging>jar</packaging>
   <version>0.6</version>
   <name>Noggit</name>
-  <url>http://noggit.org</url>
+  <url>http://github.com/yonik/noggit</url>
+  <description>Noggit is the world's fastest streaming JSON parser for Java.</description>
+  
 
   <licenses>
     <license>
@@ -21,6 +23,15 @@
     <connection>scm:git:git://github.com/yonik/noggit.git</connection>
     <developerConnection>scm:git:git@github.com:yonik/noggit.git</developerConnection>
   </scm>
+
+  <developers>
+    <developer>
+      <email>yseeley@gmail.com</email>
+      <name>Yonik Seeley</name>
+      <url>https://github.com/yonik</url>
+      <id>yonik</id>
+    </developer>
+  </developers>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
