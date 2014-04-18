@@ -62,7 +62,8 @@ public class JSONParser {
   public static final int ALLOW_COMMENTS                         = 1 << 0;
   public static final int ALLOW_SINGLE_QUOTES                    = 1 << 1;
   public static final int ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER = 1 << 2;
-  public static final int ALLOW_UNQUOTED_FIELD_NAMES             = 1 << 3;
+  public static final int ALLOW_UNQUOTED_KEYS                    = 1 << 3;
+  public static final int ALLOW_UNQUOTED_STRING_VALUES           = 1 << 4;
   public static final int FLAGS_STRICT = 0;
 
   public static class ParseException extends RuntimeException {
@@ -92,7 +93,7 @@ public class JSONParser {
 
   private static final CharArr devNull = new NullCharArr();
 
-  int flags = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER | ALLOW_UNQUOTED_FIELD_NAMES;
+  int flags = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER | ALLOW_UNQUOTED_KEYS | ALLOW_UNQUOTED_STRING_VALUES;
 
   final char[] buf;  // input buffer with JSON text in it
   int start;         // current position in the buffer
@@ -312,6 +313,47 @@ public class JSONParser {
         throw err("Expected " + new String(arr));
       }
     }
+  }
+
+  private boolean matchBareWord(char[] arr) throws IOException {
+    for (int i=1; i<arr.length; i++) {
+      int ch = getChar();
+      if (ch != arr[i]) {
+        if ( (flags & ALLOW_UNQUOTED_STRING_VALUES) == 0) {
+          throw err("Expected " + new String(arr));
+        } else {
+          stringTerm = 0;
+          out.reset();
+          out.write(arr, 0, i);
+          if (!eof) {
+            start--;
+          }
+          return false;
+        }
+      }
+    }
+
+    // if we don't allow bare strings, we don't need to check that the string actually terminates... just
+    // let things fail as the parser tries to continue
+    if ((flags & ALLOW_UNQUOTED_STRING_VALUES) == 0) {
+      return true;
+    }
+
+    // check that the string actually terminates... for example trueX should return false
+    int ch = getChar();
+    if (eof) {
+      return true;
+    } else if (!isUnquotedStringChar(ch)) {
+      start--;
+      return true;
+    }
+
+    // we encountered something like "trueX" when matching "true"
+    stringTerm = 0;
+    out.reset();
+    out.unsafeWrite(arr, 0, arr.length);
+    out.unsafeWrite(ch);
+    return false;
   }
 
   protected ParseException err(String msg) {
@@ -579,7 +621,7 @@ public class JSONParser {
   private CharArr readStringChars() throws IOException {
     if (stringTerm == 0) {
       // "out" will already contain the first part of the bare string, so don't reset it
-      readStringBare(out, start);
+      readStringBare(out);
       return out;
     }
 
@@ -606,7 +648,7 @@ public class JSONParser {
   // this should be faster for strings with fewer escapes, but probably slower for many escapes.
   private void readStringChars2(CharArr arr, int middle) throws IOException {
     if (stringTerm == 0) {
-      readStringBare(arr, start);
+      readStringBare(arr);
       return;
     }
 
@@ -635,50 +677,54 @@ public class JSONParser {
     }
   }
 
-  private void readStringBare(CharArr arr, int middle) throws IOException {
+  private void readStringBare(CharArr arr) throws IOException {
     if (arr != out) {
       arr.append(out);
     }
-    for (;;) {
-      if (middle>=end) {
-        arr.write(buf,start,middle-start);
-        start=middle;
-        getMore();
-        middle=start;
+
+    for(;;) {
+      int ch = getChar();
+      if (!isUnquotedStringChar(ch)) {
+        if (ch == -1) break;
+        if (ch == '\\') {
+          arr.write(readEscapedChar());
+          continue;
+        }
+        start--;
+        break;
       }
-      int ch = buf[middle++];
-      if (Character.isJavaIdentifierPart(ch)) {
-        continue;
-      } else if (ch=='\\') {   // support escapes in bare strings?
-        int len = middle-start-1;
-        if (len>0) arr.write(buf,start,len);
-        start=middle;
+
+      if (ch == '\\') {
         arr.write(readEscapedChar());
-        middle=start;
-      } else {
-        // an unknown character terminates the string
-        int len = middle-start-1;
-        if (len>0) arr.write(buf,start,len);
-        start=middle;
-        start--;  // back up so that something like ':' will be reread
-        return;
+        continue;
       }
+
+      arr.write(ch);
     }
   }
 
-  private void handleNonDoubleQuoteKey(int ch) throws IOException {
+
+  // isName==true if this is a field name (as opposed to a value)
+  private void handleNonDoubleQuoteString(int ch, boolean isName) throws IOException {
     if (ch == '\'') {
       stringTerm = ch;
       if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
         throw err("Single quoted strings not allowed");
       }
     } else {
-      if ((flags & ALLOW_UNQUOTED_FIELD_NAMES) == 0 || ch==EOF) {
-        throw err("Expected double quoted string");
+      if (isName && (flags & ALLOW_UNQUOTED_KEYS) == 0
+        || !isName && (flags & ALLOW_UNQUOTED_STRING_VALUES) == 0
+        || eof)
+      {
+        if (isName) {
+          throw err("Expected quoted string");
+        } else {
+          throw err(null);
+        }
       }
 
-      if (!Character.isJavaIdentifierStart(ch)) {
-        throw err("Expected string");
+      if (!isUnquotedStringStart(ch)) {
+        throw err(null);
       }
 
       stringTerm = 0;  // signal for unquoted string
@@ -687,7 +733,39 @@ public class JSONParser {
     }
   }
 
-  /*** alternate implelentation
+  private static boolean isUnquotedStringStart(int ch) {
+    return Character.isJavaIdentifierStart(ch);
+  }
+
+  private static boolean isUnquotedStringChar(int ch) {
+    return Character.isJavaIdentifierPart(ch)
+    || ch == '.'
+    || ch == '-'
+    || ch == '/';
+
+    // would checking for a-z first speed up the common case?
+
+    // possibly much more liberal unquoted string handling...
+    /***
+    switch (ch) {
+      case ' ':
+      case '\n':
+      case '\r':
+      case '\t':
+      case '}':
+      case ']':
+      case ',':
+      case ':':
+      case '=':   // reserved for future use
+      case '\\':  // check for backslash should come after this function call
+        return false;
+    }
+    return true;
+   ***/
+  }
+
+
+  /*** alternate implementation
   // middle is the pointer to the middle of a buffer to start scanning for a non-string
   // character ('"' or "/").  start<=middle<end
   private void readStringChars2a(CharArr arr, int middle) throws IOException {
@@ -789,29 +867,44 @@ public class JSONParser {
           lval = readNumber(ch,true);
           return valstate;
         case 't':
-          valstate=BOOLEAN;
           // TODO: test performance of this non-branching inline version.
           // if ((('r'-getChar())|('u'-getChar())|('e'-getChar())) != 0) err("");
-          expect(JSONUtil.TRUE_CHARS);
-          bool=true;
-          return BOOLEAN;
+          if (matchBareWord(JSONUtil.TRUE_CHARS)) {
+            bool = true;
+            valstate = BOOLEAN;
+            return valstate;
+          } else {
+            valstate = STRING;
+            return STRING;
+          }
         case 'f':
-          valstate=BOOLEAN;
-          expect(JSONUtil.FALSE_CHARS);
-          bool=false;
-          return BOOLEAN;
+          if (matchBareWord(JSONUtil.FALSE_CHARS)) {
+            bool = false;
+            valstate = BOOLEAN;
+            return valstate;
+          } else {
+            valstate = STRING;
+            return STRING;
+          }
         case 'n':
-          valstate=NULL;
-          expect(JSONUtil.NULL_CHARS);
-          return NULL;
+          if (matchBareWord(JSONUtil.NULL_CHARS)) {
+            valstate = NULL;
+            return valstate;
+          } else {
+            valstate = STRING;
+            return STRING;
+          }
         case -1:
           if (getLevel()>0) throw err("Premature EOF");
           return EOF;
-        default: throw err(null);
+        default:
+          handleNonDoubleQuoteString(ch, false);
+          valstate = STRING;
+          return STRING;
+          // throw err(null);
       }
 
-      // this is now unreachable since whitespace processing does a "continue"
-      // ch = getChar();
+      // this is  unreachable since whitespace processing does a "continue"
     }
   }
 
@@ -860,7 +953,7 @@ public class JSONParser {
         if (ch == '"') {
           stringTerm = ch;
         } else {
-          handleNonDoubleQuoteKey(ch);
+          handleNonDoubleQuoteString(ch, true);
         }
         state = DID_MEMNAME;
         valstate = STRING;
@@ -884,7 +977,7 @@ public class JSONParser {
         if (ch == '"') {
           stringTerm = ch;
         } else {
-          handleNonDoubleQuoteKey(ch);
+          handleNonDoubleQuoteString(ch, true);
         }
         state = DID_MEMNAME;
         valstate = STRING;

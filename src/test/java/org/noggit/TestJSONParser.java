@@ -326,18 +326,32 @@ public class TestJSONParser extends TestCase {
   }
 
   public void testNull() throws IOException {
+    flags = JSONParser.FLAGS_STRICT;
+    err("nul");
+    err("n");
+    err("nullz");
     err("[nullz]");
+    flags = -1;
+
     parse("[null]","[0]");
     parse("{'hi':null}",new Object[]{m,"hi",N,M,e});
   }
 
   public void testBool() throws IOException {
+    flags = JSONParser.FLAGS_STRICT;
     err("[True]");
     err("[False]");
     err("[TRUE]");
     err("[FALSE]");
     err("[truex]");
-    err("[falsex]"); 
+    err("[falsex]");
+    err("[tru]");
+    err("[fals]");
+    err("[tru");
+    err("[fals");
+    err("t");
+    err("f");
+    flags = -1;
 
     parse("[false,true, false , true ]",new Object[]{a,f,t,f,t,A,e});
   }
@@ -392,6 +406,8 @@ public class TestJSONParser extends TestCase {
   }
 
   public void testNumbers() throws IOException {
+    flags = JSONParser.FLAGS_STRICT;
+
     err("[00]");
     err("[003]");
     err("[00.3]");
@@ -401,6 +417,7 @@ public class TestJSONParser extends TestCase {
     err("[Infinity]");
     err("[--1]");
 
+    flags = -1;
 
     String lmin    = "-9223372036854775808";
     String lminNot = "-9223372036854775809";
@@ -568,12 +585,34 @@ public class TestJSONParser extends TestCase {
     parse("{'"+bigger+"':'"+bigger+"','a':'b'}", new Object[]{m,bigger,bigger,"a","b",M,e});
 
 
-    flags=JSONParser.ALLOW_UNQUOTED_FIELD_NAMES;
+    flags=JSONParser.ALLOW_UNQUOTED_KEYS;
     parse("{a:'b'}", new Object[]{m,"a","b",M,e});
     parse("{null:'b'}", new Object[]{m,"null","b",M,e});
     parse("{true: 'b'}", new Object[]{m,"true","b",M,e});
     parse("{ false :'b'}", new Object[]{m,"false","b",M,e});
     parse("{null:null, true : true , false : false , x:'y',a:'b'}", new Object[]{m,"null",N,"true",t,"false",f,"x","y","a","b",M,e});
+    flags=-1;
+  }
+
+  public void testBareString() throws Exception {
+    flags=JSONParser.ALLOW_UNQUOTED_STRING_VALUES | JSONParser.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER;
+    String[] strings = new String[] {"t","f","n","a","tru","fals","nul","abc","trueX","falseXY","nullZ","truetrue", "$true", "a.bc.def","a_b-c/d"};
+
+    for (String s : strings) {
+      parse(s, new Object[]{s, e});
+      parse("[" + s + "]", new Object[]{a, s, A, e});
+      parse("[ " + s + ", "+s +" ]", new Object[]{a, s, s, A, e});
+      parse("[" + s + ","+s +"]", new Object[]{a, s, s, A, e});
+    }
+
+    flags |= JSONParser.ALLOW_UNQUOTED_KEYS;
+    for (String s : strings) {
+      parse("{" + s + ":" + s + "}", new Object[]{m, s, s, M, e});
+      parse("{ " + s + " \t\n\r:\t\n\r " + s + "\t\n\r}", new Object[]{m, s, s, M, e});
+    }
+
+   parse("{true:true, false:false, null:null}",new Object[]{m,"true",t,"false",f,"null",N,M,e});
+
     flags=-1;
   }
 
