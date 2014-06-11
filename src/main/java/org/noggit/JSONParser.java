@@ -214,13 +214,6 @@ public class JSONParser {
     return buf[start++];
   }
 
-  private int getCharNWSY() throws IOException {
-    for (;;) {
-      int ch = getChar();
-      if (!(ch==' ' || ch=='\t' || ch=='\n' || ch=='\r')) return ch;
-    }
-  }
-
   protected int getCharNWS() throws IOException {
     outer: for (;;) {
       int ch = getChar();
@@ -306,14 +299,6 @@ public class JSONParser {
     }
   }
 
-  private void expect(char[] arr) throws IOException {
-    for (int i=1; i<arr.length; i++) {
-      int ch = getChar();
-      if (ch != arr[i]) {
-        throw err("Expected " + new String(arr));
-      }
-    }
-  }
 
   private boolean matchBareWord(char[] arr) throws IOException {
     for (int i=1; i<arr.length; i++) {
@@ -909,7 +894,7 @@ public class JSONParser {
   }
 
   @Override
-	public String toString() {
+  public String toString() {
     return "start="+start+",end="+end+",state="+state+"valstate="+valstate;
   }
 
@@ -933,8 +918,7 @@ public class JSONParser {
   public int nextEvent() throws IOException {
     if (valstate==STRING) {
       readStringChars2(devNull,start);
-    }
-    else if (valstate==BIGNUMBER) {
+    } else if (valstate==BIGNUMBER) {
       continueNumber(devNull);
     }
 
