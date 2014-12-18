@@ -147,7 +147,7 @@ public class TestJSONParser extends TestCase {
       int changes = r.nextInt(arr.length>>1) + 1;
       for (int j=0; j<changes; j++) {
         char ch;
-        switch (r.nextInt(30)) {
+        switch (r.nextInt(31)) {
           case 0: ch = 0; break;
           case 1: ch = '['; break;
           case 2: ch = ']'; break;
@@ -174,6 +174,7 @@ public class TestJSONParser extends TestCase {
           case 23:ch = '/'; break;
           case 24:ch = '\\'; break;
           case 25:ch = 'u'; break;
+          case 26:ch = '\u00a0'; break;
           default:ch = (char)r.nextInt(256);
         }
 
@@ -445,8 +446,8 @@ public class TestJSONParser extends TestCase {
     // bignum many digits on either side of decimal
     String t = bignum + "." + bignum;
     parse("["+t+","+"-"+t+"]", new Object[]{a,bn(t),bn("-"+t),A,e});
-    err(t+".1"); // extra decimal
-    err("-"+t+".1");
+    err("[" + t+".1" + "]"); // extra decimal
+    err("[" + "-"+t+".1" + "]");
 
     // bignum exponent w/o fraction
     t = "1" + "e+" + bignum;
@@ -602,7 +603,8 @@ public class TestJSONParser extends TestCase {
       parse(s, new Object[]{s, e});
       parse("[" + s + "]", new Object[]{a, s, A, e});
       parse("[ " + s + ", "+s +" ]", new Object[]{a, s, s, A, e});
-      parse("[" + s + ","+s +"]", new Object[]{a, s, s, A, e});
+      parse("[" + s + ","+s +"]",    new Object[]{a, s, s, A, e});
+      parse("\u00a0[\u00a0\r\n\t\u00a0" + s + "\u00a0,\u00a0\u00a0"+s +"\u00a0]\u00a0",    new Object[]{a, s, s, A, e});
     }
 
     flags |= JSONParser.ALLOW_UNQUOTED_KEYS;

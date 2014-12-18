@@ -214,46 +214,68 @@ public class JSONParser {
     return buf[start++];
   }
 
-  protected int getCharNWS() throws IOException {
-    outer: for (;;) {
-      int ch = getChar();
-      switch (ch) {
-        case ' ' :
-        case '\t' :
-        case '\r' :
-        case '\n' :
-          continue outer;
-        case '#' :
-          getNewlineComment();
-          continue outer;
-        case '/' :
-          getSlashComment();
-          continue outer;
-        default:
-          return ch;
-      }
-    }
+  /** Returns true if the given character is considered to be whitespace.
+   * One difference between Java's Character.isWhitespace() is that this method
+   * considers a hard space (non-breaking space, or nbsp) to be whitespace.
+   */
+  protected static final boolean isWhitespace(int ch) {
+    return (Character.isWhitespace(ch) || ch==0x00a0);
   }
 
-  protected int getCharNWS(int ch) throws IOException {
+  private static final long WS_MASK=(1L<<' ')|(1L<<'\t')|(1L<<'\r')|(1L<<'\n')|(1L<<'#')|(1L<<'/')|(0x01); // set 1 bit so 0xA0 will be flagged as whitespace
+  protected int getCharNWS() throws IOException {
     for (;;) {
+      int ch = getChar();
+      // getCharNWS is normally called in the context of expecting certain JSON special characters
+      // such as ":}"],"
+      // all of these characters are below 64 (including comment chars '/' and '#', so we can make this the fast path
+      // even w/o checking the range first.  We'll only get some false-positives while using bare strings (chars "IJMc")
+      if (((WS_MASK >> ch) & 0x01) == 0) {
+        return ch;
+      } else if (ch <= ' ') {   // this will only be true if one of the whitespace bits was set
+        continue;
+      } else if (ch=='/') {
+        getSlashComment();
+      } else if (ch=='#') {
+        getNewlineComment();
+      } else if (!isWhitespace(ch)) { // we'll only reach here with bare strings, errors, or strange whitespace like 0xa0
+        return ch;
+      }
+
+      /***
+      // getCharNWS is normally called in the context of expecting certain JSON special characters
+      // such as ":}"],"
+      // all of these characters are below 64 (including comment chars '/' and '#', so we can make this the fast path
+      if (ch < 64) {
+        if (((WS_MASK >> ch) & 0x01) == 0) return ch;
+        if (ch <= ' ') continue;  // whitespace below a normal space
+        if (ch=='/') {
+          getSlashComment();
+        } else if (ch=='#') {
+          getNewlineComment();
+        }
+      } else if (!isWhitespace(ch)) {  // check for higher whitespace like 0xA0
+        return ch;
+      }
+       ***/
+
+     /** older code
       switch (ch) {
         case ' ' :
         case '\t' :
         case '\r' :
         case '\n' :
-          break;
+          continue outer;
         case '#' :
           getNewlineComment();
-          break;
+          continue outer;
         case '/' :
           getSlashComment();
-          break;
+          continue outer;
         default:
           return ch;
       }
-
-      ch = getChar();
+     **/
     }
   }
 
@@ -722,6 +744,8 @@ public class JSONParser {
     return Character.isJavaIdentifierStart(ch);
   }
 
+  // What characters are allowed to continue an unquoted string
+  // once we know we are in one.
   private static boolean isUnquotedStringChar(int ch) {
     return Character.isJavaIdentifierPart(ch)
     || ch == '.'
@@ -733,10 +757,11 @@ public class JSONParser {
     // possibly much more liberal unquoted string handling...
     /***
     switch (ch) {
+      case -1:
       case ' ':
-      case '\n':
-      case '\r':
       case '\t':
+      case '\r':
+      case '\n':
       case '}':
       case ']':
       case ',':
@@ -787,15 +812,14 @@ public class JSONParser {
   private int next(int ch) throws IOException {
     outer: for(;;) {
       switch (ch) {
-        case ' ':
+        case ' ': // this is not the exclusive list of whitespace chars... the rest are handled in default:
         case '\t':
         case '\r':
         case '\n':
-        case '/':
-        case '#':
-          ch = getCharNWS(ch);
-          // try and keep track of linecounts?
-          continue outer;
+          // TODO: use getCharNWS to skip multiple whitespace in that function, or just
+          // let this case statement handle that?
+          ch = getChar();
+          continue;
         case '"' :
           stringTerm = '"';
           valstate = STRING;
@@ -879,10 +903,23 @@ public class JSONParser {
             valstate = STRING;
             return STRING;
           }
+        case '/':
+          getSlashComment();
+          ch = getChar();
+          continue outer;
+        case '#':
+          getNewlineComment();
+          ch = getChar();
+          continue outer;
         case -1:
           if (getLevel()>0) throw err("Premature EOF");
           return EOF;
         default:
+          // Handle unusual unicode whitespace like no-break space (0xA0)
+          if (isWhitespace(ch)) {
+            ch = getChar();  // getCharNWS() would also work
+            continue outer;
+          }
           handleNonDoubleQuoteString(ch, false);
           valstate = STRING;
           return STRING;
@@ -924,10 +961,10 @@ public class JSONParser {
 
     valstate=0;
 
-    int ch;   // TODO: factor out getCharNWS() to here and check speed
+    int ch;
     switch (state) {
       case 0:
-        return event = next(getCharNWS());
+        return event = next(getChar());
       case DID_OBJSTART:
         ch = getCharNWS();
         if (ch=='}') {
@@ -982,7 +1019,7 @@ public class JSONParser {
         } else if (ch!=',') {
           throw err("Expected ',' or ']'");
         }
-        // state = DID_ARRELEM;
+        // state = DID_ARRELEM;  // redundant
         return event = next(getChar());
     }
     return 0;
