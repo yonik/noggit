@@ -64,7 +64,16 @@ public class JSONParser {
   public static final int ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER = 1 << 2;
   public static final int ALLOW_UNQUOTED_KEYS                    = 1 << 3;
   public static final int ALLOW_UNQUOTED_STRING_VALUES           = 1 << 4;
+  /** ALLOW_EXTRA_COMMAS causes any nunber of extra commas in arrays and objects to be ignored
+   * Note that a trailing comma in [] would be [,] (hence calling the feature "trailing" commas
+   * isn't really correct.  Since trailing commas is fundamentally incompatible with any future
+   * "fill-in-missing-values-with-null", it was decided to extend this feature to handle any
+   * number of extra commas.
+   */
+  public static final int ALLOW_EXTRA_COMMAS                     = 1 << 5;
+
   public static final int FLAGS_STRICT = 0;
+  public static final int FLAGS_DEFAULT = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER | ALLOW_UNQUOTED_KEYS | ALLOW_UNQUOTED_STRING_VALUES | ALLOW_EXTRA_COMMAS;
 
   public static class ParseException extends RuntimeException {
     public ParseException(String msg) {
@@ -93,7 +102,7 @@ public class JSONParser {
 
   private static final CharArr devNull = new NullCharArr();
 
-  int flags = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER | ALLOW_UNQUOTED_KEYS | ALLOW_UNQUOTED_STRING_VALUES;
+  int flags = FLAGS_DEFAULT;
 
   final char[] buf;  // input buffer with JSON text in it
   int start;         // current position in the buffer
@@ -238,7 +247,7 @@ public class JSONParser {
         getSlashComment();
       } else if (ch=='#') {
         getNewlineComment();
-      } else if (!isWhitespace(ch)) { // we'll only reach here with bare strings, errors, or strange whitespace like 0xa0
+      } else if (!isWhitespace(ch)) { // we'll only reach here with certain bare strings, errors, or strange whitespace like 0xa0
         return ch;
       }
 
@@ -279,6 +288,35 @@ public class JSONParser {
     }
   }
 
+  protected int getCharNWS(int ch) throws IOException {
+    for (;;) {
+      // getCharNWS is normally called in the context of expecting certain JSON special characters
+      // such as ":}"],"
+      // all of these characters are below 64 (including comment chars '/' and '#', so we can make this the fast path
+      // even w/o checking the range first.  We'll only get some false-positives while using bare strings (chars "IJMc")
+      if (((WS_MASK >> ch) & 0x01) == 0) {
+        return ch;
+      } else if (ch <= ' ') {   // this will only be true if one of the whitespace bits was set
+        // whitespace... get new char at bottom of loop
+      } else if (ch == '/') {
+        getSlashComment();
+      } else if (ch == '#') {
+        getNewlineComment();
+      } else if (!isWhitespace(ch)) { // we'll only reach here with certain bare strings, errors, or strange whitespace like 0xa0
+        return ch;
+      }
+      ch = getChar();
+    }
+  }
+
+  private int getCharExpected(int expected) throws IOException {
+   for(;;) {
+      int ch = getChar();
+      if (ch==expected) return expected;
+      if (ch==' ') continue;
+      return getCharNWS(ch);
+    }
+  }
 
   protected void getNewlineComment() throws IOException {
     // read a # or a //, so go until newline
@@ -810,16 +848,15 @@ public class JSONParser {
   // return the next event when parser is in a neutral state (no
   // map separators or array element separators to read
   private int next(int ch) throws IOException {
-    outer: for(;;) {
+    // TODO: try my own form of indirect jump... look up char class and index directly into handling implementation?
+    for(;;) {
       switch (ch) {
         case ' ': // this is not the exclusive list of whitespace chars... the rest are handled in default:
         case '\t':
         case '\r':
         case '\n':
-          // TODO: use getCharNWS to skip multiple whitespace in that function, or just
-          // let this case statement handle that?
-          ch = getChar();
-          continue;
+          ch = getCharNWS(); // calling getCharNWS here seems faster than letting the switch handle it
+          break;
         case '"' :
           stringTerm = '"';
           valstate = STRING;
@@ -877,7 +914,7 @@ public class JSONParser {
           return valstate;
         case 't':
           // TODO: test performance of this non-branching inline version.
-          // if ((('r'-getChar())|('u'-getChar())|('e'-getChar())) != 0) err("");
+          // if ((('r'-getChar())|('u'-getChar())|('e'-getChar())) != 0) throw err("");
           if (matchBareWord(JSONUtil.TRUE_CHARS)) {
             bool = true;
             valstate = BOOLEAN;
@@ -906,11 +943,29 @@ public class JSONParser {
         case '/':
           getSlashComment();
           ch = getChar();
-          continue outer;
+          break;
         case '#':
           getNewlineComment();
           ch = getChar();
-          continue outer;
+          break;
+        case ']':  // This only happens with a trailing comma (or an error)
+          if (state != DID_ARRELEM || (flags & ALLOW_EXTRA_COMMAS)==0) {
+            throw err("Unexpected array closer ]");
+          }
+          pop();
+          return event = ARRAY_END;
+        case '}':  // This only happens with a trailing comma (or an error)
+          if (state != DID_MEMVAL || (flags & ALLOW_EXTRA_COMMAS)==0) {
+            throw err("Unexpected object closer }");
+          }
+          pop();
+          return event = ARRAY_END;
+        case ',': // This only happens with input like [1,]
+          if ((state != DID_ARRELEM && state != DID_MEMVAL) || (flags & ALLOW_EXTRA_COMMAS)==0) {
+            throw err("Unexpected comma");
+          }
+          ch = getChar();
+          break;
         case -1:
           if (getLevel()>0) throw err("Premature EOF");
           return EOF;
@@ -918,7 +973,7 @@ public class JSONParser {
           // Handle unusual unicode whitespace like no-break space (0xA0)
           if (isWhitespace(ch)) {
             ch = getChar();  // getCharNWS() would also work
-            continue outer;
+            break;
           }
           handleNonDoubleQuoteString(ch, false);
           valstate = STRING;
@@ -926,7 +981,6 @@ public class JSONParser {
           // throw err(null);
       }
 
-      // this is  unreachable since whitespace processing does a "continue"
     }
   }
 
@@ -953,76 +1007,85 @@ public class JSONParser {
    * </ul>
    */
   public int nextEvent() throws IOException {
-    if (valstate==STRING) {
-      readStringChars2(devNull,start);
-    } else if (valstate==BIGNUMBER) {
-      continueNumber(devNull);
+    if (valstate != 0) {
+      if (valstate == STRING) {
+        readStringChars2(devNull, start);
+      } else if (valstate == BIGNUMBER) {
+        continueNumber(devNull);
+      }
+      valstate = 0;
     }
-
-    valstate=0;
 
     int ch;
-    switch (state) {
-      case 0:
-        return event = next(getChar());
-      case DID_OBJSTART:
-        ch = getCharNWS();
-        if (ch=='}') {
-          pop();
-          return event = OBJECT_END;
-        }
-        if (ch == '"') {
-          stringTerm = ch;
-        } else {
-          handleNonDoubleQuoteString(ch, true);
-        }
-        state = DID_MEMNAME;
-        valstate = STRING;
-        return event = STRING;
-      case DID_MEMNAME:
-        ch = getCharNWS();
-        if (ch!=':') {
-          throw err("Expected key,value separator ':'");
-        }
-        state = DID_MEMVAL;  // set state first because it might be pushed...
-        return event = next(getChar());
-      case DID_MEMVAL:
-        ch = getCharNWS();
-        if (ch=='}') {
-          pop();
-          return event = OBJECT_END;
-        } else if (ch!=',') {
-          throw err("Expected ',' or '}'");
-        }
-        ch = getCharNWS();
-        if (ch == '"') {
-          stringTerm = ch;
-        } else {
-          handleNonDoubleQuoteString(ch, true);
-        }
-        state = DID_MEMNAME;
-        valstate = STRING;
-        return event = STRING;
-      case DID_ARRSTART:
-        ch = getCharNWS();
-        if (ch==']') {
-          pop();
-          return event = ARRAY_END;
-        }
-        state = DID_ARRELEM;  // set state first, might be pushed...
-        return event = next(ch);
-      case DID_ARRELEM:
-        ch = getCharNWS();
-        if (ch==']') {
-          pop();
-          return event = ARRAY_END;
-        } else if (ch!=',') {
-          throw err("Expected ',' or ']'");
-        }
-        // state = DID_ARRELEM;  // redundant
-        return event = next(getChar());
-    }
-    return 0;
+    outer: for(;;) {
+      switch (state) {
+        case 0:
+          return event = next(getChar());
+        case DID_OBJSTART:
+          ch = getCharExpected('"');
+          if (ch == '}') {
+            pop();
+            return event = OBJECT_END;
+          }
+          if (ch == '"') {
+            stringTerm = ch;
+          } else if (ch == ',' && (flags & ALLOW_EXTRA_COMMAS) != 0) {
+            continue outer;
+          } else {
+            handleNonDoubleQuoteString(ch, true);
+          }
+          state = DID_MEMNAME;
+          valstate = STRING;
+          return event = STRING;
+        case DID_MEMNAME:
+          ch = getCharExpected(':');
+          if (ch != ':') {
+            throw err("Expected key,value separator ':'");
+          }
+          state = DID_MEMVAL;  // set state first because it might be pushed...
+          return event = next(getChar());
+        case DID_MEMVAL:
+          ch = getCharExpected(',');
+          if (ch == '}') {
+            pop();
+            return event = OBJECT_END;
+          } else if (ch != ',') {
+            throw err("Expected ',' or '}'");
+          }
+          ch = getCharExpected('"');
+          if (ch == '"') {
+            stringTerm = ch;
+          } else if ((ch == ',' || ch== '}') && (flags & ALLOW_EXTRA_COMMAS) != 0) {
+            if (ch==',') continue outer;
+            pop();
+            return event = OBJECT_END;
+          } else {
+            handleNonDoubleQuoteString(ch, true);
+          }
+          state = DID_MEMNAME;
+          valstate = STRING;
+          return event = STRING;
+        case DID_ARRSTART:
+          ch = getCharNWS();
+          if (ch == ']') {
+            pop();
+            return event = ARRAY_END;
+          }
+          state = DID_ARRELEM;  // set state first, might be pushed...
+          return event = next(ch);
+        case DID_ARRELEM:
+          ch = getCharExpected(',');
+          if (ch == ',') {
+            // state = DID_ARRELEM;  // redundant
+            return event = next(getChar());
+          } else if (ch == ']') {
+            pop();
+            return event = ARRAY_END;
+          } else {
+            throw err("Expected ',' or ']'");
+          }
+      }
+    } // end for(;;)
   }
 
   public int lastEvent() {

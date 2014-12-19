@@ -37,7 +37,7 @@ public class TestJSONParser extends TestCase {
   static String parserInput;
   static JSONParser lastParser;
 
-  static int flags = -1;  // the default
+  static int flags = JSONParser.FLAGS_DEFAULT;  // the default
 
   public static String lastParser() {
     return "parserType=" + parserType
@@ -72,7 +72,7 @@ public class TestJSONParser extends TestCase {
 
     lastParser = parser;
 
-    if (flags != -1) {
+    if (flags != JSONParser.FLAGS_DEFAULT) {
       parser.setFlags(flags);
     }
 
@@ -332,7 +332,7 @@ public class TestJSONParser extends TestCase {
     err("n");
     err("nullz");
     err("[nullz]");
-    flags = -1;
+    flags = JSONParser.FLAGS_DEFAULT;
 
     parse("[null]","[0]");
     parse("{'hi':null}",new Object[]{m,"hi",N,M,e});
@@ -352,7 +352,7 @@ public class TestJSONParser extends TestCase {
     err("[fals");
     err("t");
     err("f");
-    flags = -1;
+    flags = JSONParser.FLAGS_DEFAULT;
 
     parse("[false,true, false , true ]",new Object[]{a,f,t,f,t,A,e});
   }
@@ -374,7 +374,7 @@ public class TestJSONParser extends TestCase {
     flags = JSONParser.FLAGS_STRICT;
     err("['\\ ']");  // escape of non-special char
     err("['\\U1111']");  // escape of non-special char
-    flags = -1;
+    flags = JSONParser.FLAGS_DEFAULT;
 
     parse("['\\ ']", new Object[]{a, " ", A, e});  // escape of non-special char
     parse("['\\U1111']", new Object[]{a, "U1111", A, e});  // escape of non-special char
@@ -418,7 +418,7 @@ public class TestJSONParser extends TestCase {
     err("[Infinity]");
     err("[--1]");
 
-    flags = -1;
+    flags = JSONParser.FLAGS_DEFAULT;
 
     String lmin    = "-9223372036854775808";
     String lminNot = "-9223372036854775809";
@@ -543,6 +543,23 @@ public class TestJSONParser extends TestCase {
     err("[}");
     err("{]");
     err("['a':'b']");
+
+    flags=JSONParser.FLAGS_STRICT;
+    err("[,]");         // test that extra commas fail
+    err("[[],]");
+    err("['a',]");
+    err("['a',]");
+    flags=JSONParser.FLAGS_DEFAULT;
+
+    parse("[,]","[]");  // test extra commas
+    parse("[,,]","[]");
+    parse("[,,,]","[]");
+    parse("[[],]","[[]]");
+    parse("[[,],]","[[]]");
+    parse("[[,,],,]","[[]]");
+    parse("[,[,,],,]","[[]]");
+    parse("[,5,[,,5],,]","[l[l]]");
+
   }
 
   public void testObject() throws IOException {
@@ -566,15 +583,24 @@ public class TestJSONParser extends TestCase {
     err("{'a','b'}");
     err("{[]:'b'}");
     err("{{'a':'b'}:'c'}");
+    err("{'a','b'}}");
 
     // bare strings allow these to pass
     flags=JSONParser.FLAGS_STRICT;
     err("{null:'b'}");
     err("{true:'b'}");
     err("{false:'b'}");
-    flags=-1;
+    err("{,}");         // test that extra commas fail
+    err("{{},}");
+    err("{'a':'b',}");
+    flags=JSONParser.FLAGS_DEFAULT;
 
-    parse("{"+"}", new Object[]{m,M,e});
+    parse("{}", new Object[]{m,M,e});
+    parse("{,}", new Object[]{m,M,e});
+    parse("{,,}", new Object[]{m,M,e});
+    parse("{'a':{},}", new Object[]{m,"a",m,M,M,e});
+    parse("{'a':{},,}", new Object[]{m,"a",m,M,M,e});
+    parse("{,'a':{,},,}", new Object[]{m,"a",m,M,M,e});
     parse("{'a':'b'}", new Object[]{m,"a","b",M,e});
     parse("{'a':5}", new Object[]{m,"a",o(5),M,e});
     parse("{'a':null}", new Object[]{m,"a",N,M,e});
@@ -592,7 +618,7 @@ public class TestJSONParser extends TestCase {
     parse("{true: 'b'}", new Object[]{m,"true","b",M,e});
     parse("{ false :'b'}", new Object[]{m,"false","b",M,e});
     parse("{null:null, true : true , false : false , x:'y',a:'b'}", new Object[]{m,"null",N,"true",t,"false",f,"x","y","a","b",M,e});
-    flags=-1;
+    flags=JSONParser.FLAGS_DEFAULT;
   }
 
   public void testBareString() throws Exception {
@@ -615,7 +641,7 @@ public class TestJSONParser extends TestCase {
 
    parse("{true:true, false:false, null:null}",new Object[]{m,"true",t,"false",f,"null",N,M,e});
 
-    flags=-1;
+    flags=JSONParser.FLAGS_DEFAULT;
   }
 
 
