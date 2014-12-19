@@ -38,7 +38,7 @@ public class ObjectBuilder {
   }
 
   final JSONParser parser;
-  
+
   public ObjectBuilder(JSONParser parser) throws IOException {
     this.parser = parser;
     if (parser.lastEvent()==0) parser.nextEvent();
@@ -65,11 +65,11 @@ public class ObjectBuilder {
 
 
   public Object getString() throws IOException {
-    return parser.getString();    
+    return parser.getString();
   }
 
   public Object getLong() throws IOException {
-    return Long.valueOf(parser.getLong());    
+    return Long.valueOf(parser.getLong());
   }
 
   public Object getNumber() throws IOException {
@@ -108,7 +108,7 @@ public class ObjectBuilder {
   }
 
   @SuppressWarnings("unchecked")
-	public void addKeyVal(Object map, Object key, Object val) throws IOException {
+  public void addKeyVal(Object map, Object key, Object val) throws IOException {
 		/* Object prev = */((Map<Object, Object>) map).put(key, val);
     // TODO: test for repeated value?
   }
@@ -124,7 +124,7 @@ public class ObjectBuilder {
       int ev = parser.nextEvent();
       if (ev==JSONParser.OBJECT_END) return objectEnd(m);
       Object key = getKey();
-      ev = parser.nextEvent();      
+      ev = parser.nextEvent();
       Object val = getVal();
       addKeyVal(m, key, val);
     }
@@ -135,14 +135,14 @@ public class ObjectBuilder {
   }
 
   @SuppressWarnings("unchecked")
-	public void addArrayVal(Object arr, Object val) throws IOException {
+  public void addArrayVal(Object arr, Object val) throws IOException {
     ((List<Object>)arr).add(val);
   }
 
   public Object endArray(Object arr) {
     return arr;
   }
-  
+
   public Object getArray() throws IOException {
     Object arr = newArray();
     for(;;) {

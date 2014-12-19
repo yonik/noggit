@@ -48,7 +48,7 @@ public class TestJSONParser extends TestCase {
   public static JSONParser getParser(String s) {
     return getParser(s, r.nextInt(2), -1);
   }
-  
+
   public static JSONParser getParser(String s, int type, int bufSize) {
     parserInput = s;
     parserType = type;
@@ -80,18 +80,18 @@ public class TestJSONParser extends TestCase {
   }
 
   /** for debugging purposes
-  public void testSpecific() throws Exception {
-    JSONParser parser = getParser("[0",1,1);
-    for (;;) {
-      int ev = parser.nextEvent();
-      if (ev == JSONParser.EOF) {
-        break;
-      } else {
-        System.out.println("got " + JSONParser.getEventString(ev));
-      }
-    }
-  }
-  **/
+   public void testSpecific() throws Exception {
+   JSONParser parser = getParser("[0",1,1);
+   for (;;) {
+   int ev = parser.nextEvent();
+   if (ev == JSONParser.EOF) {
+   break;
+   } else {
+   System.out.println("got " + JSONParser.getEventString(ev));
+   }
+   }
+   }
+   **/
 
   public static byte[] events = new byte[256];
   static {
@@ -217,27 +217,27 @@ public class TestJSONParser extends TestCase {
   }
 
 
-  
+
   public static class Num {
     public String digits;
     public Num(String digits) {
       this.digits = digits;
     }
     @Override
-		public String toString() { return new String("NUMBERSTRING("+digits+")"); }
+    public String toString() { return new String("NUMBERSTRING("+digits+")"); }
     @Override
-		public boolean equals(Object o) {
-			return (getClass() == o.getClass() && digits.equals(((Num) o).digits));
+    public boolean equals(Object o) {
+      return (getClass() == o.getClass() && digits.equals(((Num) o).digits));
     }
-		@Override
-		public int hashCode() {
-			return digits.hashCode();
-		}
+    @Override
+    public int hashCode() {
+      return digits.hashCode();
+    }
   }
 
   public static class BigNum extends Num {
     @Override
-		public String toString() { return new String("BIGNUM("+digits+")"); }    
+    public String toString() { return new String("BIGNUM("+digits+")"); }
     public BigNum(String digits) { super(digits); }
   }
 
@@ -251,17 +251,17 @@ public class TestJSONParser extends TestCase {
   public static Object t = new Boolean(true);
   public static Object f = new Boolean(false);
   public static Object a = new Object(){@Override
-	public String toString() {return "ARRAY_START";}};
+                                        public String toString() {return "ARRAY_START";}};
   public static Object A = new Object(){@Override
-	public String toString() {return "ARRAY_END";}};
+                                        public String toString() {return "ARRAY_END";}};
   public static Object m = new Object(){@Override
-	public String toString() {return "OBJECT_START";}};
+                                        public String toString() {return "OBJECT_START";}};
   public static Object M = new Object(){@Override
-	public String toString() {return "OBJECT_END";}};
+                                        public String toString() {return "OBJECT_END";}};
   public static Object N = new Object(){@Override
-	public String toString() {return "NULL";}};
+                                        public String toString() {return "NULL";}};
   public static Object e = new Object(){@Override
-	public String toString() {return "EOF";}};
+                                        public String toString() {return "EOF";}};
 
   // match parser states with the expected states
   public static void parse(JSONParser p, String input, Object[] expected) throws IOException {
@@ -292,7 +292,7 @@ public class TestJSONParser extends TestCase {
       }
 
       if (!(exp==got || exp.equals(got))) {
-				fail("Fail: String='" + input + "'" + "\n\tINPUT=" + got + "\n\tEXPECTED=" + exp + "\n\tAT RULE " + i);
+        fail("Fail: String='" + input + "'" + "\n\tINPUT=" + got + "\n\tEXPECTED=" + exp + "\n\tAT RULE " + i);
       }
     }
   }
@@ -323,7 +323,7 @@ public class TestJSONParser extends TestCase {
     } catch (Exception e) {
       return;
     }
-    fail("Input should failed:'" + input + "'");    
+    fail("Input should failed:'" + input + "'");
   }
 
   public void testNull() throws IOException {
@@ -432,7 +432,7 @@ public class TestJSONParser extends TestCase {
 
 
     parse("["+lmin +"," + lmax+"]",
-          new Object[]{a,o(Long.MIN_VALUE),o(Long.MAX_VALUE),A,e});
+            new Object[]{a,o(Long.MIN_VALUE),o(Long.MAX_VALUE),A,e});
 
     parse("["+bignum+"]", new Object[]{a,bn(bignum),A,e});
     parse("["+"-"+bignum+"]", new Object[]{a,bn("-"+bignum),A,e});
@@ -441,7 +441,7 @@ public class TestJSONParser extends TestCase {
     parse("["+lmaxNot+"]",new Object[]{a,bn(lmaxNot),A,e});
 
     parse("["+lminNot + "," + lmaxNot + "]",
-          new Object[]{a,bn(lminNot),bn(lmaxNot),A,e});
+            new Object[]{a,bn(lminNot),bn(lmaxNot),A,e});
 
     // bignum many digits on either side of decimal
     String t = bignum + "." + bignum;
@@ -492,7 +492,7 @@ public class TestJSONParser extends TestCase {
     };
     for (int i=0; i<vals.length; i++) {
       double d = vals[i];
-      parse("["+d+","+-d+"]", new Object[]{a,o(d),o(-d),A,e});      
+      parse("["+d+","+-d+"]", new Object[]{a,o(d),o(-d),A,e});
     }
 
     // MIN_NORMAL has the max number of digits (23), so check that
@@ -639,7 +639,7 @@ public class TestJSONParser extends TestCase {
       parse("{ " + s + " \t\n\r:\t\n\r " + s + "\t\n\r}", new Object[]{m, s, s, M, e});
     }
 
-   parse("{true:true, false:false, null:null}",new Object[]{m,"true",t,"false",f,"null",N,M,e});
+    parse("{true:true, false:false, null:null}",new Object[]{m,"true",t,"false",f,"null",N,M,e});
 
     flags=JSONParser.FLAGS_DEFAULT;
   }
@@ -657,10 +657,6 @@ public class TestJSONParser extends TestCase {
 
   public void testComments() throws IOException {
     parse("#pre comment\n{//before a\n  'a' /* after a **/ #before separator\n  : /* after separator */ {/*before b*/'b'#after b\n://before c\n'c'/*after c*/}/*after close*/}#post comment no EOL", new Object[]{m,"a",m,"b","c",M,M,e});
-
-
-
-
   }
 
 }

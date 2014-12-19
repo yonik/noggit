@@ -69,17 +69,17 @@ public class CharArr implements CharSequence, Appendable {
   public int getEnd() { return end; }
   public int size() { return end-start; }
   @Override
-	public int length() { return size(); }
+  public int length() { return size(); }
   public int capacity() { return buf.length; }
 
 
   @Override
-	public char charAt(int index) {
+  public char charAt(int index) {
     return buf[start+index];
   }
 
   @Override
-	public CharArr subSequence(int start, int end) {
+  public CharArr subSequence(int start, int end) {
     return new CharArr(buf, this.start+start, this.start+end);
   }
 
@@ -89,7 +89,7 @@ public class CharArr implements CharSequence, Appendable {
   }
 
   public int read(char cbuf[], int off, int len) {
-   //TODO
+    //TODO
     return 0;
   }
 
@@ -164,18 +164,18 @@ public class CharArr implements CharSequence, Appendable {
 
 
   @Override
-	public String toString() {
+  public String toString() {
     return new String(buf, start, size());
   }
 
   public int read(CharBuffer cb) throws IOException {
 
     /***
-    int sz = size();
-    if (sz<=0) return -1;
-    if (sz>0) cb.put(buf, start, sz);
-    return -1;
-    ***/
+     int sz = size();
+     if (sz<=0) return -1;
+     if (sz>0) cb.put(buf, start, sz);
+     return -1;
+     ***/
 
     int sz = size();
     if (sz>0) cb.put(buf, start, sz);
@@ -196,18 +196,18 @@ public class CharArr implements CharSequence, Appendable {
 
   //////////////// Appendable methods /////////////
   @Override
-	public final Appendable append(CharSequence csq) throws IOException {
+  public final Appendable append(CharSequence csq) throws IOException {
     return append(csq, 0, csq.length());
   }
 
   @Override
-	public Appendable append(CharSequence csq, int start, int end) throws IOException {
+  public Appendable append(CharSequence csq, int start, int end) throws IOException {
     write(csq.subSequence(start, end).toString());
     return null;
   }
 
   @Override
-	public final Appendable append(char c) throws IOException {
+  public final Appendable append(char c) throws IOException {
     write(c);
     return this;
   }
@@ -219,38 +219,38 @@ class NullCharArr extends CharArr {
     super(new char[1],0,0);
   }
   @Override
-	public void unsafeWrite(char b) {}
+  public void unsafeWrite(char b) {}
 
   @Override
-	public void unsafeWrite(char b[], int off, int len) {}
+  public void unsafeWrite(char b[], int off, int len) {}
 
   @Override
-	public void unsafeWrite(int b) {}
+  public void unsafeWrite(int b) {}
 
   @Override
-	public void write(char b) {}
+  public void write(char b) {}
 
   @Override
-	public void write(char b[], int off, int len) {}
+  public void write(char b[], int off, int len) {}
 
   @Override
-	public void reserve(int num) {}
+  public void reserve(int num) {}
 
   @Override
-	protected void resize(int len) {}
+  protected void resize(int len) {}
 
   @Override
-	public Appendable append(CharSequence csq, int start, int end) throws IOException {
+  public Appendable append(CharSequence csq, int start, int end) throws IOException {
     return this;
   }
 
   @Override
-	public char charAt(int index) {
+  public char charAt(int index) {
     return 0;
   }
 
   @Override
-	public void write(String s, int stringOffset, int len) {
+  public void write(String s, int stringOffset, int len) {
   }
 }
 
@@ -266,13 +266,13 @@ class CharArrReader extends CharArr {
   }
 
   @Override
-	public int read() throws IOException {
+  public int read() throws IOException {
     if (start>=end) fill();
     return start>=end ? -1 : buf[start++];
   }
 
   @Override
-	public int read(CharBuffer cb) throws IOException {
+  public int read(CharBuffer cb) throws IOException {
     // empty the buffer and then read direct
     int sz = size();
     if (sz>0) cb.put(buf,start,end);
@@ -282,7 +282,7 @@ class CharArrReader extends CharArr {
   }
 
   @Override
-	public int fill() throws IOException {
+  public int fill() throws IOException {
     if (start>=end) {
       reset();
     } else if (start>0) {
@@ -290,13 +290,13 @@ class CharArrReader extends CharArr {
       end=size(); start=0;
     }
     /***
-    // fill fully or not???
-    do {
-      int sz = in.read(buf,end,buf.length-end);
-      if (sz==-1) return;
-      end+=sz;
-    } while (end < buf.length);
-    ***/
+     // fill fully or not???
+     do {
+     int sz = in.read(buf,end,buf.length-end);
+     if (sz==-1) return;
+     end+=sz;
+     } while (end < buf.length);
+     ***/
 
     int sz = in.read(buf,end,buf.length-end);
     if (sz>0) end+=sz;
@@ -322,11 +322,11 @@ class CharArrWriter extends CharArr {
 
   @Override
   public void write(char b) {
-   if (end >= buf.length) {
-     flush();
-   }
-   unsafeWrite(b);
- }
+    if (end >= buf.length) {
+      flush();
+    }
+    unsafeWrite(b);
+  }
 
   @Override
   public void write(char b[], int off, int len) {

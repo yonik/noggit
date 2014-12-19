@@ -37,10 +37,10 @@ public class TestJSONWriter extends TestCase {
   }
 
   public static List<Object> L(Object... lst) {
-     return Arrays.asList(lst);
+    return Arrays.asList(lst);
   }
   public static Object[] A(Object... lst) {
-     return lst;
+    return lst;
   }
   public static Map<String,Object> O(Object... lst) {
     LinkedHashMap<String,Object> map = new LinkedHashMap<String,Object>();
@@ -62,13 +62,13 @@ public class TestJSONWriter extends TestCase {
   }
 
   public static class Custom implements JSONWriter.Writable {
-      @Override
-			public void write(JSONWriter writer) {
-          Map<String,Integer> val = new LinkedHashMap<String,Integer>();
-          val.put("a",1);
-          val.put("b",2);
-          writer.write(val);
-      }
+    @Override
+    public void write(JSONWriter writer) {
+      Map<String,Integer> val = new LinkedHashMap<String,Integer>();
+      val.put("a",1);
+      val.put("b",2);
+      writer.write(val);
+    }
   }
 
   public void testWritable() throws Exception {
