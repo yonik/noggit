@@ -659,4 +659,15 @@ public class TestJSONParser extends TestCase {
     parse("#pre comment\n{//before a\n  'a' /* after a **/ #before separator\n  : /* after separator */ {/*before b*/'b'#after b\n://before c\n'c'/*after c*/}/*after close*/}#post comment no EOL", new Object[]{m,"a",m,"b","c",M,M,e});
   }
 
+  // rfc7159 permits any JSON values to be top level values
+  public void testTopLevelValues() throws Exception {
+    parse("\"\"", new Object[]{""});
+    parse("\"hello\"", new Object[]{"hello"});
+    parse("true", new Object[]{t});
+    parse("false", new Object[]{f});
+    parse("null", new Object[]{N});
+    parse("42", new Object[]{42L});
+    parse("1.414", new Object[]{1.414d});
+    parse("/*comment*/1.414/*more comment*/", new Object[]{1.414d});
+  }
 }
