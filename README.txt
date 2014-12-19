@@ -8,13 +8,13 @@ Features:
  - Streaming API (StAX/pull-parser like) for both easy and efficient parsing.
  - Conforms to JSON standard: http://www.ietf.org/rfc/rfc4627.txt
  - Conforms to JSON standard: http://rfc7159.net/rfc7159
- - Memory efficiency
+ - Memory efficiency:
     - Incremental parsing (Reader-based) in order to handle huge messages.
     - A single byte of state needed per nested object or array.
     - Doesn't read large objects (including primitives) into memory unless asked.
     - Can eliminate most copying, allowing user to provide value output buffers.
  - Can handle primitives of any size (does not attempt to parse
-   numerics into a certain language primitives unless asked).
+   numerics into a certain language primitive unless asked).
  - Simple serialization of objects (List, Map, etc).
  - Optional creation of objects (List, Map, etc) when parsing.
 
