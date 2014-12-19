@@ -3,7 +3,7 @@
   <groupId>org.noggit</groupId>
   <artifactId>noggit</artifactId>
   <packaging>jar</packaging>
-  <version>0.7</version>
+  <version>0.8-SNAPSHOT</version>
   <name>Noggit</name>
   <url>http://github.com/yonik/noggit</url>
   <description>Noggit is the world's fastest streaming JSON parser for Java.</description>
