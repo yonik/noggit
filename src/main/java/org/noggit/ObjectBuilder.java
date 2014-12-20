@@ -77,7 +77,7 @@ public class ObjectBuilder {
     double d = Double.parseDouble(numstr);
     if (!Double.isInfinite(d)) return Double.valueOf(d);
     // TODO: use more efficient constructor in Java5
-    return new BigDecimal(numstr);
+    return new BigDecimal(num.buf, num.start, num.size());
   }
 
   public Object getBigNumber() throws IOException {
