@@ -63,9 +63,9 @@ public class JSONParser {
   public static final int ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER = 1 << 2;
   public static final int ALLOW_UNQUOTED_KEYS                    = 1 << 3;
   public static final int ALLOW_UNQUOTED_STRING_VALUES           = 1 << 4;
-  /** ALLOW_EXTRA_COMMAS causes any nunber of extra commas in arrays and objects to be ignored
+  /** ALLOW_EXTRA_COMMAS causes any number of extra commas in arrays and objects to be ignored
    * Note that a trailing comma in [] would be [,] (hence calling the feature "trailing" commas
-   * isn't really correct.  Since trailing commas is fundamentally incompatible with any future
+   * is either limiting or misleading.  Since trailing commas is fundamentally incompatible with any future
    * "fill-in-missing-values-with-null", it was decided to extend this feature to handle any
    * number of extra commas.
    */
