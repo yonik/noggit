@@ -70,6 +70,8 @@ public class CharArr implements CharSequence, Appendable {
   public int size() { return end-start; }
   @Override
   public int length() { return size(); }
+
+  /** The capacity of the buffer when empty (getArray().size()) */
   public int capacity() { return buf.length; }
 
 

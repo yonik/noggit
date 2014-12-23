@@ -25,13 +25,14 @@ import java.util.List;
  */
 public class TestPerf {
   static int flags = JSONParser.FLAGS_DEFAULT;
+  static int iter = 1;
+  static  List<String> vals = new ArrayList<String>();
+  static  List<Object> objs = new ArrayList<Object>();
+  static boolean ws = false;
+  static boolean nows = false;
+  static boolean writer = false;
 
   public static void main(String[] args) throws Exception {
-    int iter=1;
-    List<String> vals = new ArrayList<String>();
-    boolean ws = false;
-    boolean nows = false;
-
     int i=0;
     while (i<args.length) {
       String k=args[i++];
@@ -47,6 +48,8 @@ public class TestPerf {
         nows = true;
       } else if ("-flags".equals(k)) {
         Integer.parseInt(k);
+      } else if ("-writer".equals(k)) {
+        writer = true;
       }
     }
 
@@ -81,21 +84,25 @@ public class TestPerf {
       vals.add(sb.toString());
     }
 
+
+
     // handle adding or removing whitespace
-    if (ws || nows) {
+    if (ws || nows || writer) {
       List<String> out = new ArrayList<String>();
       for (String val : vals) {
         Object o = ObjectBuilder.fromJSON(val);
-        if (ws) {
+        if (writer) {
+          objs.add(o);
+        } else if (ws) {
           String s = JSONUtil.toJSON(o, 2);
           out.add(s);
-        }
-        if (nows) {
+        } else if (nows) {
           String s = JSONUtil.toJSON(o, -1);
           out.add(s);
         }
       }
-      vals = out;
+      if (!writer)
+        vals = out;
     }
 
     // calculate total size per iteration
@@ -108,8 +115,15 @@ public class TestPerf {
 
     int ret=0;
     for (int j=0; j<iter; j++) {
-      for (String json : vals)
-      ret += parse(json);
+      if (writer) {
+        for (Object o : objs) {
+          ret += write(o);
+        }
+      } else {
+        for (String json : vals) {
+          ret += parse(json);
+        }
+      }
     }
 
     long end = System.currentTimeMillis();
@@ -143,4 +157,11 @@ public class TestPerf {
     return ret;
   }
 
+  static CharArr out = new CharArr();
+  public static int write(Object o) {
+    out.reset();
+    JSONWriter writer = new JSONWriter(out,-1);
+    writer.write(o);
+    return out.size();
+  }
 }

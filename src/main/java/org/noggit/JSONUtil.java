@@ -16,6 +16,8 @@
 
 package org.noggit;
 
+import java.util.Arrays;
+
 /**
  * @author yonik
  * @version $Id: JSONUtil.java 1209632 2011-12-02 18:48:42Z yonik $
@@ -76,6 +78,12 @@ public class JSONUtil {
     out.write('"');
   }
 
+  public static void writeString(String val, int start, int end, CharArr out) {
+    out.write('"');
+    writeStringPart(val,start,end,out);
+    out.write('"');
+  }
+
   public static void writeString(CharSequence val, int start, int end, CharArr out) {
     out.write('"');
     writeStringPart(val,start,end,out);
@@ -85,29 +93,70 @@ public class JSONUtil {
   public static void writeStringPart(char[] val, int start, int end, CharArr out) {
     for (int i=start; i<end; i++) {
       char ch = val[i];
-      switch(ch) {
-        case '"':
-        case '\\':
-          out.write('\\');
+      // When ch>=1f, (ch*146087937)&0xd6a01f80) is 0 only for characters that need escaping: " \\ u2028 u2029
+      // and has 7 false positives: 204a 4051 802f c022 c044 e04a e04b
+      if (ch > 0x1f && ((ch * 146087937) & 0xd6a01f80) != 0) {
+        out.write(ch);
+      } else {
+        writeChar(ch, out);
+      }
+    }
+  }
+
+  public static void writeChar(char ch, CharArr out) {
+    switch(ch) {
+      case '"':
+      case '\\':
+        out.write('\\');
+        out.write(ch);
+        break;
+      case '\r': out.write('\\'); out.write('r'); break;
+      case '\n': out.write('\\'); out.write('n'); break;
+      case '\t': out.write('\\'); out.write('t'); break;
+      case '\b': out.write('\\'); out.write('b'); break;
+      case '\f': out.write('\\'); out.write('f'); break;
+      // case '/':
+      case '\u2028':  // valid JSON, but not valid json script
+      case '\u2029':
+        unicodeEscape(ch,out);
+        break;
+      default:
+        if (ch <= 0x1F) {
+          unicodeEscape(ch,out);
+        } else {
           out.write(ch);
-          break;
-        case '\r': out.write('\\'); out.write('r'); break;
-        case '\n': out.write('\\'); out.write('n'); break;
-        case '\t': out.write('\\'); out.write('t'); break;
-        case '\b': out.write('\\'); out.write('b'); break;
-        case '\f': out.write('\\'); out.write('f'); break;
-        // case '/':
-        default:
-          if (ch <= 0x1F) {
-            unicodeEscape(ch,out);
-          } else {
-            // These characters are valid JSON, but not valid JavaScript
-            if (ch=='\u2028' || ch=='\u2029') {
-              unicodeEscape(ch,out);
-            } else {
-              out.write(ch);
-            }
-          }
+        }
+    }
+  }
+
+
+  public static void writeStringPart(String chars, int start, int end, CharArr out) {
+    // TODO: write in chunks?
+
+    int toWrite = end - start;
+    char[] arr = out.getArray();
+    int pos = out.getEnd();
+    int space = arr.length - pos;
+    if (space < toWrite) {
+      writeStringPart((CharSequence)chars, start, end, out);
+      return;
+    }
+
+    // get chars directly from String into output array
+    chars.getChars(start, end, arr, pos);
+
+    int endInOut = pos + toWrite;
+    out.setEnd(endInOut);
+    for (int i=pos; i<endInOut ;i++) {
+      char ch = arr[i];
+
+      // When ch>=1f, (ch*146087937)&0xd6a01f80) is 0 only for characters that need escaping: " \\ u2028 u2029
+      // and has 7 false positives: 204a 4051 802f c022 c044 e04a e04b
+      if (ch<=0x1f || ((ch*146087937)&0xd6a01f80)==0 ) {
+        // We hit a char that needs escaping. do the rest char by char.
+        out.setEnd(i);
+        writeStringPart((CharSequence)chars, start+(i-pos), end, out);
+        return;
       }
     }
   }
@@ -115,29 +164,12 @@ public class JSONUtil {
   public static void writeStringPart(CharSequence chars, int start, int end, CharArr out) {
     for (int i=start; i<end; i++) {
       char ch = chars.charAt(i);
-      switch(ch) {
-        case '"':
-        case '\\':
-          out.write('\\');
-          out.write(ch);
-          break;
-        case '\r': out.write('\\'); out.write('r'); break;
-        case '\n': out.write('\\'); out.write('n'); break;
-        case '\t': out.write('\\'); out.write('t'); break;
-        case '\b': out.write('\\'); out.write('b'); break;
-        case '\f': out.write('\\'); out.write('f'); break;
-        // case '/':
-        default:
-          if (ch <= 0x1F) {
-            unicodeEscape(ch,out);
-          } else {
-            // These characters are valid JSON, but not valid JavaScript
-            if (ch=='\u2028' || ch=='\u2029') {
-              unicodeEscape(ch,out);
-            } else {
-              out.write(ch);
-            }
-          }
+        // When ch>=1f, (ch*146087937)&0xd6a01f80) is 0 only for characters that need escaping: " \\ u2028 u2029
+        // and has 7 false positives: 204a 4051 802f c022 c044 e04a e04b
+        if ( ch>0x1f && ((ch*146087937)&0xd6a01f80)!=0 ) {
+        out.write(ch);
+      } else {
+        writeChar(ch, out);
       }
     }
   }

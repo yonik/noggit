@@ -64,10 +64,11 @@ public class JSONWriter {
   }
 
   public void write(Object o) {
+    // NOTE: an instance-of chain was about 50% faster than hashing on the classes, even with perfect hashing.
     if (o == null) {
       writeNull();
-    } else if (o instanceof CharSequence) {
-      writeString((CharSequence)o);
+    } else if (o instanceof String) {
+      writeString((String)o);
     } else if (o instanceof Number) {
       if (o instanceof Integer || o instanceof Long) {
         write(((Number)o).longValue());
@@ -82,14 +83,15 @@ public class JSONWriter {
       write((Map<?,?>)o);
     } else if (o instanceof Collection) {
       write((Collection<?>)o);
-    } else if (o instanceof Object[]) {
-      write(Arrays.asList((Object[])o));
     } else if (o instanceof Boolean) {
       write(((Boolean)o).booleanValue());
+    } else if (o instanceof CharSequence) {
+      writeString((CharSequence)o);
     } else if (o instanceof Writable) {
       ((Writable) o).write(this);
-    }
-    else if (o instanceof int[]) {
+    } else if (o instanceof Object[]) {
+      write(Arrays.asList((Object[])o));
+    } else if (o instanceof int[]) {
       write((int[])o);
     } else if (o instanceof float[]) {
       write((float[])o);
@@ -257,6 +259,10 @@ public class JSONWriter {
 
   public void writeNull() {
     JSONUtil.writeNull(out);
+  }
+
+  public void writeString(String str) {
+    JSONUtil.writeString(str,0,str.length(),out);
   }
 
   public void writeString(CharSequence str) {
