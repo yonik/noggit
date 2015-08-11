@@ -114,7 +114,7 @@ public class JSONWriter {
 
   /** Override this method for custom handling of unknown classes.  Also see the Writable interface. */
   public void handleUnknownClass(Object o) {
-    writeString(out.toString());
+    writeString(o.toString());
   }
 
   public void write(Map<?,?> val) {

@@ -60,6 +60,14 @@ public class TestJSONWriter extends TestCase {
 
   }
 
+
+  public static class Unknown {
+    @Override
+    public String toString() {
+      return "a,\"b\",c";
+    }
+  }
+
   public static class Custom implements JSONWriter.Writable {
     @Override
     public void write(JSONWriter writer) {
@@ -74,4 +82,9 @@ public class TestJSONWriter extends TestCase {
     test("[{'a':1,'b':2}]", L(new Custom()), -1);
     test("[10,{'a':1,'b':2},20]", L(10, new Custom(), 20), -1);
   }
+
+  public void testUnknown() throws Exception {
+    test("['a,\\\"b\\\",c']", L(new Unknown()), -1);
+  }
+
 }
