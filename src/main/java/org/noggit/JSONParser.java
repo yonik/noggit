@@ -101,18 +101,18 @@ public class JSONParser {
 
   private static final CharArr devNull = new NullCharArr();
 
-  int flags = FLAGS_DEFAULT;
+  protected int flags = FLAGS_DEFAULT;
 
-  final char[] buf;  // input buffer with JSON text in it
-  int start;         // current position in the buffer
-  int end;           // end position in the buffer (one past last valid index)
-  final Reader in;   // optional reader to obtain data from
-  boolean eof=false; // true if the end of the stream was reached.
-  long gpos;          // global position = gpos + start
+  protected final char[] buf;  // input buffer with JSON text in it
+  protected int start;         // current position in the buffer
+  protected int end;           // end position in the buffer (one past last valid index)
+  protected final Reader in;   // optional reader to obtain data from
+  protected boolean eof=false; // true if the end of the stream was reached.
+  protected long gpos;          // global position = gpos + start
 
-  int event;         // last event read
+  protected int event;         // last event read
 
-  int stringTerm;    // The terminator for the last string we read: single quote, double quote, or 0 for unterminated.
+  protected int stringTerm;    // The terminator for the last string we read: single quote, double quote, or 0 for unterminated.
 
   public JSONParser(Reader in) {
     this(in, new char[8192]);
@@ -308,7 +308,7 @@ public class JSONParser {
     }
   }
 
-  private int getCharExpected(int expected) throws IOException {
+  protected int getCharExpected(int expected) throws IOException {
    for(;;) {
       int ch = getChar();
       if (ch==expected) return expected;
@@ -359,7 +359,7 @@ public class JSONParser {
   }
 
 
-  private boolean matchBareWord(char[] arr) throws IOException {
+  protected boolean matchBareWord(char[] arr) throws IOException {
     for (int i=1; i<arr.length; i++) {
       int ch = getChar();
       if (ch != arr[i]) {
@@ -749,7 +749,7 @@ public class JSONParser {
 
 
   // isName==true if this is a field name (as opposed to a value)
-  private void handleNonDoubleQuoteString(int ch, boolean isName) throws IOException {
+  protected void handleNonDoubleQuoteString(int ch, boolean isName) throws IOException {
     if (ch == '\'') {
       stringTerm = ch;
       if ((flags & ALLOW_SINGLE_QUOTES) == 0) {
