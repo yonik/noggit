@@ -70,6 +70,7 @@ public class JSONParser {
    * number of extra commas.
    */
   public static final int ALLOW_EXTRA_COMMAS                     = 1 << 5;
+  public static final int ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT = 1 << 6;
 
   public static final int FLAGS_STRICT = 0;
   public static final int FLAGS_DEFAULT = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER | ALLOW_UNQUOTED_KEYS | ALLOW_UNQUOTED_STRING_VALUES | ALLOW_EXTRA_COMMAS;
@@ -1081,7 +1082,11 @@ public class JSONParser {
             pop();
             return event = ARRAY_END;
           } else {
-            throw err("Expected ',' or ']'");
+            if (ch == '{' && (flags & ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT) != 0) {
+              return event = next(ch);
+            } else {
+              throw err("Expected ',' or ']'");
+            }
           }
       }
     } // end for(;;)

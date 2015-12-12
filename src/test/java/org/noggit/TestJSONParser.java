@@ -617,7 +617,11 @@ public class TestJSONParser extends TestCase {
     parse("{true: 'b'}", new Object[]{m,"true","b",M,e});
     parse("{ false :'b'}", new Object[]{m,"false","b",M,e});
     parse("{null:null, true : true , false : false , x:'y',a:'b'}", new Object[]{m,"null",N,"true",t,"false",f,"x","y","a","b",M,e});
-    flags=JSONParser.FLAGS_DEFAULT;
+    flags = JSONParser.FLAGS_DEFAULT | JSONParser.ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT;
+    parse("{'a'{'b':'c'}}", new Object[]{m, "a", m, "b", "c", M, M, e});
+    parse("{'a': [{'b':'c'} {'b':'c'}]}", new Object[]{m, "a",a, m, "b", "c", M, m, "b", "c", M,A, M, e});
+    flags = JSONParser.FLAGS_DEFAULT;
+
   }
 
   public void testBareString() throws Exception {
