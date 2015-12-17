@@ -419,10 +419,10 @@ public class JSONParser {
   private String getContext() {
     String context = "";
     if (start>=0) {
-      context += " BEFORE='" + errEscape(Math.max(start-60,0), start+1) + "'";
+      context += " AFTER='" + errEscape(Math.max(start - 60, 0), start + 1) + "'";
     }
     if (start<end) {
-      context += " AFTER='" + errEscape(start+1, start+40) + "'";
+      context += " BEFORE='" + errEscape(start + 1, start + 40) + "'";
     }
     return context;
   }
@@ -1040,7 +1040,11 @@ public class JSONParser {
         case DID_MEMNAME:
           ch = getCharExpected(':');
           if (ch != ':') {
-            throw err("Expected key,value separator ':'");
+            if (ch == '{' && (flags & ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT) != 0) {
+              start--;
+            } else {
+              throw err("Expected key,value separator ':'");
+            }
           }
           state = DID_MEMVAL;  // set state first because it might be pushed...
           return event = next(getChar());
@@ -1050,6 +1054,9 @@ public class JSONParser {
             pop();
             return event = OBJECT_END;
           } else if (ch != ',') {
+            if ((flags & ALLOW_EXTRA_COMMAS) != 0 && (ch == '\'' || ch == '"' || Character.isLetter(ch))) {
+              start--;
+            } else
             throw err("Expected ',' or '}'");
           }
           ch = getCharExpected('"');

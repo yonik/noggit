@@ -620,6 +620,8 @@ public class TestJSONParser extends TestCase {
     flags = JSONParser.FLAGS_DEFAULT | JSONParser.ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT;
     parse("{'a'{'b':'c'}}", new Object[]{m, "a", m, "b", "c", M, M, e});
     parse("{'a': [{'b':'c'} {'b':'c'}]}", new Object[]{m, "a",a, m, "b", "c", M, m, "b", "c", M,A, M, e});
+    parse("{'a': {'b':'c'} 'd': {'e':'f'}}", new Object[]{m, "a", m, "b", "c",M,  "d", m,"e","f", M, M, e});
+    parse("{'a': {'b':'c'} d: {'e':'f'}}", new Object[]{m, "a", m, "b", "c",M,  "d", m,"e","f", M, M, e});
     flags = JSONParser.FLAGS_DEFAULT;
 
   }
