@@ -1040,7 +1040,7 @@ public class JSONParser {
         case DID_MEMNAME:
           ch = getCharExpected(':');
           if (ch != ':') {
-            if (ch == '{' && (flags & ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT) != 0) {
+            if ((ch == '{' || ch == '[') && (flags & ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT) != 0) {
               start--;
             } else {
               throw err("Expected key,value separator ':'");
@@ -1089,7 +1089,7 @@ public class JSONParser {
             pop();
             return event = ARRAY_END;
           } else {
-            if (ch == '{' && (flags & ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT) != 0) {
+            if ((ch == '{' || ch == '[') && (flags & ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT) != 0) {
               return event = next(ch);
             } else {
               throw err("Expected ',' or ']'");
