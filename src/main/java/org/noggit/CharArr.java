@@ -135,7 +135,7 @@ public class CharArr implements CharSequence, Appendable {
   }
 
   public final void write(CharArr arr) {
-    write(arr.buf, start, end-start);
+    write(arr.buf, arr.start, arr.end-arr.start);
   }
 
   public final void write(String s) {
