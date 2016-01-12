@@ -20,6 +20,7 @@ Features:
  - Optional creation of objects (List, Map, etc) when parsing.
 
 Syntax Features (Optional):
+---------------------------
  - Single-line comments using either # or //
  - Multi-line comments using C style /* comments in here */
  - Single quoted strings.
