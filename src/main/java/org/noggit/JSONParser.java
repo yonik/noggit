@@ -71,6 +71,7 @@ public class JSONParser {
    */
   public static final int ALLOW_EXTRA_COMMAS                     = 1 << 5;
   public static final int ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT = 1 << 6;
+  public static final int OPTIONAL_OUTER_BRACES = 1 << 7;
 
   public static final int FLAGS_STRICT = 0;
   public static final int FLAGS_DEFAULT = ALLOW_COMMENTS | ALLOW_SINGLE_QUOTES | ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER | ALLOW_UNQUOTED_KEYS | ALLOW_UNQUOTED_STRING_VALUES | ALLOW_EXTRA_COMMAS;
@@ -114,6 +115,8 @@ public class JSONParser {
   protected int event;         // last event read
 
   protected int stringTerm;    // The terminator for the last string we read: single quote, double quote, or 0 for unterminated.
+
+  protected boolean missingOpeningBrace = false;
 
   public JSONParser(Reader in) {
     this(in, new char[8192]);
@@ -1020,7 +1023,15 @@ public class JSONParser {
     outer: for(;;) {
       switch (state) {
         case 0:
-          return event = next(getChar());
+          event = next(getChar());
+          if (event == STRING && (flags & OPTIONAL_OUTER_BRACES) != 0) {
+            if (start > 0) start--;
+            missingOpeningBrace = true;
+            stringTerm = 0;
+            valstate = 0;
+            event = next('{');
+          }
+          return event;
         case DID_OBJSTART:
           ch = getCharExpected('"');
           if (ch == '}') {
@@ -1056,8 +1067,11 @@ public class JSONParser {
           } else if (ch != ',') {
             if ((flags & ALLOW_EXTRA_COMMAS) != 0 && (ch == '\'' || ch == '"' || Character.isLetter(ch))) {
               start--;
-            } else
-            throw err("Expected ',' or '}'");
+            } else if (missingOpeningBrace && ch == -1 && (flags & OPTIONAL_OUTER_BRACES) != 0) {
+              missingOpeningBrace = false;
+              pop();
+              return event = OBJECT_END;
+            } else throw err("Expected ',' or '}'");
           }
           ch = getCharExpected('"');
           if (ch == '"') {

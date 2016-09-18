@@ -55,6 +55,14 @@ public class TestObjectBuilder extends TestCase {
     }
     return map;
   }
+  public void testWithoutStartingBraces() throws IOException {
+    JSONParser parser = new JSONParser("a: {key:val1}b:{key:val2}");
+    parser.setFlags(JSONParser.FLAGS_DEFAULT | JSONParser.OPTIONAL_OUTER_BRACES| JSONParser.ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT);
+    ObjectBuilder objectBuilder = new ObjectBuilder(parser);
+    String s1 = JSONUtil.toJSON(objectBuilder.getObject(),-1);
+    String expected = JSONUtil.toJSON(O("a", O("key", "val1"), "b", O("key", "val2")),-1);
+    assertEquals(s1, expected);
+  }
 
   public void testVariations(String str, Object expected) throws IOException {
     test("["+str+"]", L(expected));

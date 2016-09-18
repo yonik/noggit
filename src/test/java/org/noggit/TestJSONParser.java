@@ -18,6 +18,7 @@ package org.noggit;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.Map;
 import java.util.Random;
 
 import junit.framework.TestCase;
@@ -41,7 +42,7 @@ public class TestJSONParser extends TestCase {
   public static String lastParser() {
     return "parserType=" + parserType
             + (parserType==1 ? " bufferSize=" + bufferSize : "")
-            + " parserInput='" + parserInput + "'";
+            + " parserInput='" + parserInput + "'" + "flags : " + lastParser.flags;
   }
 
   public static JSONParser getParser(String s) {
@@ -312,7 +313,6 @@ public class TestJSONParser extends TestCase {
       parse(p,in,expected);
     }
   }
-
 
 
   public static void err(String input) throws IOException {
@@ -624,6 +624,13 @@ public class TestJSONParser extends TestCase {
     parse("{'a':[['b']['c']]}", new Object[]{m, "a", a, a, "b", A, a, "c", A, A, M, e});
     parse("{'a': {'b':'c'} 'd': {'e':'f'}}", new Object[]{m, "a", m, "b", "c",M,  "d", m,"e","f", M, M, e});
     parse("{'a': {'b':'c'} d: {'e':'f'}}", new Object[]{m, "a", m, "b", "c",M,  "d", m,"e","f", M, M, e});
+
+    flags = JSONParser.FLAGS_DEFAULT | JSONParser.ALLOW_MISSING_COLON_COMMA_BEFORE_OBJECT | JSONParser.OPTIONAL_OUTER_BRACES;
+    parse("'a':{'b':'c'}", new Object[]{m, "a", m, "b", "c", M, M, e});
+    parse("'a':{'b':'c'}", true, new Object[]{m, "a", m, "b", "c", M, M, e});
+    parse("a:'b'", new Object[]{m, "a", "b", M, e});
+
+
     flags = JSONParser.FLAGS_DEFAULT;
 
   }
