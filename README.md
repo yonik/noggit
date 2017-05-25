@@ -29,3 +29,6 @@ Syntax Features (Optional):
  - Allow backslash escaping of any character.
  - Allow trailing commas and extra commas.  Example: [9,4,3,]
  - Handle nbsp (non-break space, \u00a0) as whitespace.
+ - Optional opening and closing brackets. "a" :"Val1", "b" : "Val2" is equivalent to {"a" :"Val1", "b" : "Val2" }
+ - Optional comma between objects {"a" :{"b:"c"} "d": {"e":"f"}} or [{"a":"b"}{"c":"d"}] are all valid
+ - Optional colon between key and value {"a" {"c":"d"}} and {"a" ["b","c"]} are valid
